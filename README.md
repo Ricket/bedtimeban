@@ -5,7 +5,6 @@ For Minecraft 1.12
 TODO
 ---
 For first public version:
-* server admin command to delete a scheduled ban
 * string localization
 * custom ban durations
 * grace period to unban if the ban time was wrong (e.g. "ban me at 11am" "oh shoot I meant 11pm")
