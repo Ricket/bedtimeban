@@ -69,7 +69,7 @@ public class BanHammer implements Runnable, Callable<Void> {
                         scheduledBan.setStart(null);
                         banScheduler.updateBan(uuid, scheduledBan);
                     }
-                } else if (scheduledBan.getWarningsSent() < BanWarning.values().length) {
+                } else if (scheduledBan.getStart() != null && scheduledBan.getWarningsSent() < BanWarning.values().length) {
                     BanWarning nextWarning = BanWarning.values()[scheduledBan.getWarningsSent()];
                     Instant nextWarningInstant = scheduledBan.getStart().minus(nextWarning.amount, nextWarning.unit);
                     if (now.isAfter(nextWarningInstant)) {
