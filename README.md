@@ -1,6 +1,6 @@
 Bedtime Ban mod
 ===
-For Minecraft 1.12
+For Minecraft 1.12. [Download it here.](https://github.com/Ricket/bedtimeban/releases/latest)
 
 Required on both client and server side. (Doesn't do anything in single player)
 
