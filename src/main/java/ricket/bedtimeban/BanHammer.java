@@ -6,7 +6,6 @@ import lombok.RequiredArgsConstructor;
 import net.minecraft.entity.player.EntityPlayerMP;
 import net.minecraft.server.MinecraftServer;
 import net.minecraft.util.text.TextComponentString;
-import ricket.bedtimeban.network.TimezoneRequestMessage;
 
 import java.time.Clock;
 import java.time.Instant;
@@ -24,7 +23,6 @@ public class BanHammer implements Runnable, Callable<Void> {
     private final MinecraftServer server;
     private final MinecraftServerBanUtils banUtils;
     private final BanScheduler banScheduler;
-    private final PlayerTimeZones playerTimeZones;
 
     @VisibleForTesting
     Clock clock = Clock.systemUTC();
@@ -52,7 +50,6 @@ public class BanHammer implements Runnable, Callable<Void> {
         Instant now = Instant.now(clock);
 
         Map<UUID, ScheduledBan> scheduledBans = banScheduler.getScheduledBans();
-        boolean needConfigSync = false;
         for (Entry<UUID, ScheduledBan> entry : scheduledBans.entrySet()) {
             UUID uuid = entry.getKey();
             String playerName = banUtils.uuidToPlayerName(uuid);
@@ -83,13 +80,6 @@ public class BanHammer implements Runnable, Callable<Void> {
                 }
             } catch (Exception e) {
                 BedtimeBanMod.logger.error("Error processing scheduled ban data for " + playerName, e);
-            }
-        }
-
-        // Also check that we have time zone data for all the logged-in players. Sometimes the network packet gets lost.
-        for (EntityPlayerMP player : server.getPlayerList().getPlayers()) {
-            if (playerTimeZones.getTimezone(player.getUniqueID()) == null) {
-                BedtimeBanMod.networkWrapper.sendTo(TimezoneRequestMessage.instance, player);
             }
         }
 

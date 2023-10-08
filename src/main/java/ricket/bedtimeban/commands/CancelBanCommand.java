@@ -47,7 +47,7 @@ public class CancelBanCommand implements ICommand {
     @Override
     public void execute(MinecraftServer server, ICommandSender sender, String[] args) throws CommandException {
         if (args.length == 0) {
-            sender.sendMessage(new TextComponentString(getUsage(sender)));
+            sender.sendMessage(new TextComponentString("Usage: " + getUsage(sender)));
             return;
         }
 

@@ -26,3 +26,10 @@ TODO
 * ban scheduling ("ban me Sun-Thurs at 11pm")
 * custom ban durations
 * grace period to unban if the ban time was wrong (e.g. "ban me at 11am" "oh shoot I meant 11pm")
+
+
+Dev notes
+---
+
+* Make sure JAVA_HOME and PATH point to JDK 8, otherwise you may get weird red herring errors about unable to find mapping.
+* reobfJar is the main gradle target.

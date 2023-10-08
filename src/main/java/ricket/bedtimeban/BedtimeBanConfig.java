@@ -11,9 +11,15 @@ public class BedtimeBanConfig {
     @Comment("Command name for setting up bedtime")
     public static String commandBedtime = "bedtime";
 
-    @Comment("Command name for canceling a scheduled ban")
+    @Comment("Command name for canceling a scheduled ban (OP only)")
     public static String commandCancel = "cancelbedtime";
 
-    @Comment("Scheduled player bans")
+    @Comment("Command name for a player setting their timezone")
+    public static String commandSetTimezone = "setmytimezone";
+
+    @Comment("Player timezones by player uuid")
+    public static ConcurrentMap<String, String> timezones = new ConcurrentHashMap<>();
+
+    @Comment("Scheduled player bans by player uuid")
     public static ConcurrentMap<String, String> scheduledBans = new ConcurrentHashMap<>();
 }

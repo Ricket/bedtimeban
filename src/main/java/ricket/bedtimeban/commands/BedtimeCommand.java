@@ -10,8 +10,6 @@ import net.minecraft.util.math.BlockPos;
 import net.minecraft.util.text.TextComponentString;
 import ricket.bedtimeban.BanScheduler;
 import ricket.bedtimeban.BedtimeBanConfig;
-import ricket.bedtimeban.BedtimeBanMod;
-import ricket.bedtimeban.PlayerTimeZones;
 import ricket.bedtimeban.ScheduledBan;
 import ricket.bedtimeban.TimeParser;
 
@@ -19,16 +17,18 @@ import javax.annotation.Nullable;
 import java.time.Instant;
 import java.time.ZoneId;
 import java.time.ZonedDateTime;
+import java.time.format.DateTimeFormatter;
 import java.time.temporal.ChronoUnit;
 import java.util.Collections;
 import java.util.List;
+import java.util.UUID;
 
 @RequiredArgsConstructor
 public class BedtimeCommand implements ICommand {
+    private static final DateTimeFormatter DATETIME_FORMATTER = DateTimeFormatter.ofPattern("yyyy-MM-dd hh:mma z");
 
     private final TimeParser timeParser;
     private final BanScheduler banScheduler;
-    private final PlayerTimeZones playerTimeZones;
 
     @Override
     public String getName() {
@@ -48,38 +48,50 @@ public class BedtimeCommand implements ICommand {
     @Override
     public void execute(MinecraftServer server, ICommandSender sender, String[] args) throws CommandException {
         if (!(sender instanceof EntityPlayerMP)) {
-            sender.sendMessage(new TextComponentString("Must run command from a player session"));
+            sender.sendMessage(new TextComponentString("Must run command from a multiplayer session."));
             return;
         }
 
-        ScheduledBan scheduledBan = banScheduler.getScheduledBan(((EntityPlayerMP) sender).getUniqueID());
+        UUID playerUuid = ((EntityPlayerMP) sender).getUniqueID();
+
+        if (args.length == 0) {
+            // if it's run without arguments, and a bedtime is set, remind them of their bedtime.
+            String banReminderString = banScheduler.makeBanReminderString(playerUuid);
+            if (banReminderString != null) {
+                sender.sendMessage(new TextComponentString(banReminderString));
+                return;
+            }
+        }
+
+        ScheduledBan scheduledBan = banScheduler.getScheduledBan(playerUuid);
         if (scheduledBan != null) {
-            sender.sendMessage(new TextComponentString("You already have a bedtime set"));
+            sender.sendMessage(new TextComponentString("You already have a bedtime set."));
             return;
         }
 
         if (args.length != 1) {
-            sender.sendMessage(new TextComponentString("Usage:\n" + getUsage(sender)));
+            sender.sendMessage(new TextComponentString("Usage: " + getUsage(sender)));
             return;
         }
-        String userEnteredTime = args[0];
 
-        ZoneId timezone = playerTimeZones.getTimezone(((EntityPlayerMP) sender).getUniqueID());
+        ZoneId timezone = banScheduler.getTimezone(playerUuid);
         if (timezone == null) {
-            BedtimeBanMod.logger.warn("Could not find timezone for player " + ((EntityPlayerMP) sender).getDisplayNameString());
-            sender.sendMessage(new TextComponentString("Server has not received timezone info yet, please retry in a minute"));
+            sender.sendMessage(new TextComponentString(String.format("You have not configured your timezone yet. Use /%s to set your timezone first.", BedtimeBanConfig.commandSetTimezone)));
             return;
         }
+
+        String userEnteredTime = args[0];
 
         ZonedDateTime dateTime = timeParser.parseUserInput(userEnteredTime, timezone);
         if (dateTime == null) {
-            sender.sendMessage(new TextComponentString("Failed to parse '" + userEnteredTime + "'"));
+            sender.sendMessage(new TextComponentString(String.format("Failed to parse '%s'", userEnteredTime)));
             return;
         }
         Instant startTime = dateTime.toInstant();
         Instant endTime = startTime.plus(8, ChronoUnit.HOURS);
-        banScheduler.scheduleBan(((EntityPlayerMP) sender).getUniqueID(), startTime, endTime);
-        sender.sendMessage(new TextComponentString("Ok, you will be banned at " + dateTime.toString()));
+        banScheduler.scheduleBan(playerUuid, startTime, endTime);
+
+        sender.sendMessage(new TextComponentString(String.format("Ok, you will be banned at %s.", dateTime.format(DATETIME_FORMATTER))));
     }
 
     @Override
