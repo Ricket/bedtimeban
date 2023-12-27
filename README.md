@@ -2,16 +2,30 @@ Bedtime Ban mod
 ===
 For Minecraft 1.12. [Download it here.](https://github.com/Ricket/bedtimeban/releases/latest)
 
-Required on both client and server side. (Doesn't do anything in single player)
+Required only on server side. (Doesn't do anything in single player)
 
 Usage
 ---
+
+First set your timezone using the setmytimezone command, it's pretty flexible with the timezone format:
+
+`/setmytimezone America/Chicago`
+or
+`/setmytimezone US/Pacific`
+or
+`/setmytimezone EDT`
+
+You only have to do this once, the timezone will be remembered for your user (of course, you can run the command again to change it).
+
+Then, declare your bedtime for today's play session:
 
 `/bedtime 11:30pm`
 or
 `/bedtime 11pm`
 
-Once scheduled, it can't be cancelled except from a server command, so don't mess up. It's a one-time thing so you have to do it each day. It will give you 15-, 5- and 1-minute warnings, and then you'll be banned for 8 hours.
+It's a one-time thing; you have to do it each day that you play. I like it this way because I feel in control, I am declaring my good intentions and not just obeying a scheduled punishment.
+
+Once a bedtime is scheduled, it can't be changed or cancelled except from a server command, so don't mess up. It will give you 15-, 5- and 1-minute warnings, and then you'll be banned for 8 hours.
 
 The time is in the player's local time (timezone is transmitted upon login) so you don't need to worry about server location.
 
