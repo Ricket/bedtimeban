@@ -1,0 +1,4 @@
+{
+  "commands.bedtimeban.timezone.notfound": "No such timezone. Use a standard timezone ID like \"US/Pacific\" or \"America/Chicago\" or \"EDT\". Start typing and hit tab to see options.",
+  "multiplayer.bedtimeban.disconnect": "Good night!"
+}

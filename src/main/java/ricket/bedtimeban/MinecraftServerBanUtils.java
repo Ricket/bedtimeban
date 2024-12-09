@@ -2,13 +2,14 @@ package ricket.bedtimeban;
 
 import com.mojang.authlib.GameProfile;
 import lombok.RequiredArgsConstructor;
-import net.minecraft.entity.player.EntityPlayerMP;
+import net.minecraft.network.chat.Component;
 import net.minecraft.server.MinecraftServer;
-import net.minecraft.server.management.PlayerList;
-import net.minecraft.server.management.UserListBans;
-import net.minecraft.server.management.UserListBansEntry;
-import net.minecraft.util.text.TextComponentString;
+import net.minecraft.server.level.ServerPlayer;
+import net.minecraft.server.players.PlayerList;
+import net.minecraft.server.players.UserBanList;
+import net.minecraft.server.players.UserBanListEntry;
 
+import java.util.Objects;
 import java.util.UUID;
 
 @RequiredArgsConstructor
@@ -20,46 +21,51 @@ public class MinecraftServerBanUtils {
      * @return true if the player is now banned; false if the player was already banned (or error)
      */
     public boolean ban(UUID uuid) {
-        // This flow was largely copied from CommandBanPlayer
+        // This flow was copied from BanPlayerCommands
 
-        GameProfile gameprofile = server.getPlayerProfileCache().getProfileByUUID(uuid);
-        if (gameprofile == null) {
-            throw new RuntimeException("Could not find GameProfile for player " + uuidToPlayerName(uuid));
-        }
+        GameProfile gameprofile = getGameProfile(uuid);
 
         PlayerList playerList = server.getPlayerList();
-        UserListBans bannedPlayers = playerList.getBannedPlayers();
+
+        UserBanList bannedPlayers = playerList.getBans();
         if (bannedPlayers.isBanned(gameprofile)) {
             return false;
         }
 
-        UserListBansEntry entry = new UserListBansEntry(gameprofile, null, "BedtimeBan", null, "Bed time!");
-        bannedPlayers.addEntry(entry);
+        UserBanListEntry entry = new UserBanListEntry(gameprofile, null, "BedtimeBan", null, "Bed time!");
+        bannedPlayers.add(entry);
 
-        EntityPlayerMP entityPlayer = playerList.getPlayerByUUID(uuid);
+        ServerPlayer entityPlayer = playerList.getPlayer(uuid);
         if (entityPlayer != null) {
-            entityPlayer.connection.disconnect(new TextComponentString("Good night!"));
+            entityPlayer.connection.disconnect(Component.translatable("multiplayer.bedtimeban.disconnect"));
         }
 
         return true;
     }
 
     public void unban(UUID uuid) {
-        // This flow was copied from CommandPardonPlayer
+        // This flow was copied from PardonCommand
 
-        GameProfile gameprofile = server.getPlayerProfileCache().getProfileByUUID(uuid);
-        if (gameprofile == null) {
-            throw new RuntimeException("Could not find GameProfile for player " + uuidToPlayerName(uuid));
+        GameProfile gameprofile = getGameProfile(uuid);
+
+        UserBanList bans = server.getPlayerList().getBans();
+        if (bans.isBanned(gameprofile))
+        {
+            bans.remove(gameprofile);
         }
+    }
 
-        server.getPlayerList().getBannedPlayers().removeEntry(gameprofile);
+    private GameProfile getGameProfile(UUID uuid)
+    {
+        return Objects.requireNonNull(server.getProfileCache()).get(uuid)
+                .orElseThrow(() -> new RuntimeException("Could not find GameProfile for player " + uuidToPlayerName(uuid)));
     }
 
     public String uuidToPlayerName(UUID uuid) {
-        EntityPlayerMP player = server.getPlayerList().getPlayerByUUID(uuid);
+        ServerPlayer player = server.getPlayerList().getPlayer(uuid);
         if (player == null) {
             return uuid.toString();
         }
-        return player.getName();
+        return player.getName().getString();
     }
 }

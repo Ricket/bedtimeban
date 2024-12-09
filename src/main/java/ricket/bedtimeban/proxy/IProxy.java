@@ -1,11 +1,13 @@
 package ricket.bedtimeban.proxy;
 
-import net.minecraftforge.fml.common.event.FMLPreInitializationEvent;
-import net.minecraftforge.fml.common.event.FMLServerStartedEvent;
-import net.minecraftforge.fml.common.event.FMLServerStartingEvent;
+import net.minecraftforge.event.RegisterCommandsEvent;
+import net.minecraftforge.event.TickEvent;
+import net.minecraftforge.event.entity.player.PlayerEvent;
+import net.minecraftforge.event.server.ServerStartingEvent;
 
 public interface IProxy {
-    void preInit(FMLPreInitializationEvent event);
-    void serverStarting(FMLServerStartingEvent event);
-    void serverStarted(FMLServerStartedEvent event);
+    void serverStarting(ServerStartingEvent event);
+    void registerCommands(RegisterCommandsEvent event);
+    void serverTick(TickEvent.ServerTickEvent event);
+    void playerLoggedIn(PlayerEvent.PlayerLoggedInEvent event);
 }

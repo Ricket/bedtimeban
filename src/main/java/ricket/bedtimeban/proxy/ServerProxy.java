@@ -1,68 +1,54 @@
 package ricket.bedtimeban.proxy;
 
-import com.google.common.util.concurrent.ThreadFactoryBuilder;
-import com.google.gson.Gson;
-import com.google.gson.GsonBuilder;
+import lombok.RequiredArgsConstructor;
+import net.minecraft.network.chat.Component;
 import net.minecraft.server.MinecraftServer;
-import net.minecraft.util.text.TextComponentString;
-import net.minecraftforge.fml.common.event.FMLPreInitializationEvent;
-import net.minecraftforge.fml.common.event.FMLServerStartedEvent;
-import net.minecraftforge.fml.common.event.FMLServerStartingEvent;
-import net.minecraftforge.fml.common.eventhandler.EventPriority;
-import net.minecraftforge.fml.common.eventhandler.SubscribeEvent;
-import net.minecraftforge.fml.common.gameevent.PlayerEvent.PlayerLoggedInEvent;
-import net.minecraftforge.fml.common.gameevent.PlayerEvent.PlayerLoggedOutEvent;
-import ricket.bedtimeban.*;
-import ricket.bedtimeban.commands.BedtimeCommand;
-import ricket.bedtimeban.commands.CancelBanCommand;
-import ricket.bedtimeban.commands.SetTimezoneCommand;
+import net.minecraftforge.event.RegisterCommandsEvent;
+import net.minecraftforge.event.TickEvent;
+import net.minecraftforge.event.entity.player.PlayerEvent;
+import net.minecraftforge.event.server.ServerStartingEvent;
+import ricket.bedtimeban.BanHammer;
+import ricket.bedtimeban.BanScheduler;
+import ricket.bedtimeban.BedtimeBanConfig;
+import ricket.bedtimeban.MinecraftServerBanUtils;
+import ricket.bedtimeban.commands.BedtimeBanCommands;
 
-import java.time.Instant;
-import java.util.concurrent.Executors;
-import java.util.concurrent.ScheduledExecutorService;
-
+@RequiredArgsConstructor
 public class ServerProxy implements IProxy {
 
-    public static final Gson gson = new GsonBuilder()
-            .registerTypeAdapter(Instant.class, new InstantSerializer())
-            .create();
-
-    public static final ScheduledExecutorService banExecutor = Executors.newSingleThreadScheduledExecutor(new ThreadFactoryBuilder().setNameFormat("BedtimeBanHammer").build());
-
-    private final TimeParser timeParser = new TimeParser();
-    private final BanScheduler banScheduler = new BanScheduler();
+    private final BedtimeBanConfig config;
+    private final BanScheduler banScheduler;
+    private MinecraftServerBanUtils banUtils;
     private BanHammer banHammer;
+    private BedtimeBanCommands commands;
 
     @Override
-    public void preInit(FMLPreInitializationEvent event) {
-        // register network handlers, etc
-    }
-
-    @Override
-    public void serverStarting(FMLServerStartingEvent event) {
+    public void serverStarting(ServerStartingEvent event) {
         MinecraftServer server = event.getServer();
-        MinecraftServerBanUtils banUtils = new MinecraftServerBanUtils(server);
-        banHammer = new BanHammer(banExecutor, server, banUtils, banScheduler);
-
-        event.registerServerCommand(new BedtimeCommand(timeParser, banScheduler));
-        event.registerServerCommand(new CancelBanCommand(banUtils, banScheduler));
-        event.registerServerCommand(new SetTimezoneCommand(banScheduler));
+        banUtils = new MinecraftServerBanUtils(server);
+        banHammer = new BanHammer(server, banUtils, banScheduler);
     }
 
     @Override
-    public void serverStarted(FMLServerStartedEvent event) {
-        banHammer.start();
+    public void registerCommands(RegisterCommandsEvent event) {
+        commands = new BedtimeBanCommands(config, banScheduler, banUtils);
+        commands.register(event.getDispatcher());
     }
 
-    @SubscribeEvent(priority = EventPriority.LOWEST)
-    public void playerLoggedIn(PlayerLoggedInEvent event) {
-        String reminder = banScheduler.makeBanReminderString(event.player.getUniqueID());
-        if (reminder != null) {
-            event.player.sendMessage(new TextComponentString(reminder));
+    @Override
+    public void serverTick(TickEvent.ServerTickEvent event) {
+        if (event.phase != TickEvent.Phase.END) {
+            return;
         }
+
+        banHammer.tick(event.haveTime());
     }
 
-    @SubscribeEvent
-    public void playerLoggedOut(PlayerLoggedOutEvent event) {
+    @Override
+    public void playerLoggedIn(PlayerEvent.PlayerLoggedInEvent event) {
+        String reminder = banScheduler.makeBanReminderString(event.getEntity().getUUID());
+        if (reminder != null) {
+            event.getEntity().sendSystemMessage(Component.literal(reminder));
+        }
     }
 }

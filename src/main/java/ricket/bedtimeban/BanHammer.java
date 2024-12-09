@@ -1,52 +1,60 @@
 package ricket.bedtimeban;
 
-import com.google.common.annotations.VisibleForTesting;
-import com.google.common.util.concurrent.ListenableFuture;
+import com.google.common.util.concurrent.RateLimiter;
+import com.mojang.logging.LogUtils;
 import lombok.RequiredArgsConstructor;
-import net.minecraft.entity.player.EntityPlayerMP;
+import net.minecraft.network.chat.Component;
 import net.minecraft.server.MinecraftServer;
-import net.minecraft.util.text.TextComponentString;
+import net.minecraft.server.level.ServerPlayer;
 
 import java.time.Clock;
 import java.time.Instant;
 import java.util.Map;
 import java.util.Map.Entry;
 import java.util.UUID;
-import java.util.concurrent.Callable;
-import java.util.concurrent.ScheduledExecutorService;
-import java.util.concurrent.TimeUnit;
 
 @RequiredArgsConstructor
-public class BanHammer implements Runnable, Callable<Void> {
+public class BanHammer {
 
-    private final ScheduledExecutorService executor;
+    private static final org.slf4j.Logger LOGGER = LogUtils.getLogger();
+
     private final MinecraftServer server;
     private final MinecraftServerBanUtils banUtils;
     private final BanScheduler banScheduler;
 
-    @VisibleForTesting
-    Clock clock = Clock.systemUTC();
+    private final Clock clock = Clock.systemUTC();
 
-    public void start() {
-        executor.scheduleAtFixedRate(this, 0, 60, TimeUnit.SECONDS);
-    }
+    private static final int TICKS_BETWEEN_CHECKS = 60 * 20; // 60 seconds in ticks
+    private int ticksToNextCheck;
+    private final RateLimiter starvationWarningRateLimit = RateLimiter.create(1.0 / 5.0);
 
-    @Override
-    public void run() {
-        // This is called within the BanHammer thread, careful not to do Minecraft things here.
-        try {
-            // TODO we should precompute more of the stuff from the call() method to save main thread time
-
-            ListenableFuture<Void> future = server.callFromMainThread(this);
-            future.get();
-        } catch (Exception e) {
-            BedtimeBanMod.logger.error("Caught exception from BanHammer run", e);
+    public void tick(boolean haveTime)
+    {
+        ticksToNextCheck--;
+        if (haveTime && ticksToNextCheck <= 0)
+        {
+            try
+            {
+                processBans();
+            }
+            catch (Exception e)
+            {
+                LOGGER.error("Caught exception from BanHammer run", e);
+            }
+            finally
+            {
+                ticksToNextCheck = TICKS_BETWEEN_CHECKS;
+            }
+        }
+        else if (ticksToNextCheck < -TICKS_BETWEEN_CHECKS)
+        {
+            if (starvationWarningRateLimit.tryAcquire()) {
+                LOGGER.warn("BanHammer is being starved, has not run in {} seconds", Math.round((double)(TICKS_BETWEEN_CHECKS - ticksToNextCheck) / 20.0));
+            }
         }
     }
 
-    @Override
-    public Void call() throws Exception {
-        // This is called from the Minecraft main thread, we can do things with MinecraftServer here
+    private void processBans() {
         Instant now = Instant.now(clock);
 
         Map<UUID, ScheduledBan> scheduledBans = banScheduler.getScheduledBans();
@@ -58,11 +66,11 @@ public class BanHammer implements Runnable, Callable<Void> {
 
                 if (scheduledBan.getEnd() != null && now.isAfter(scheduledBan.getEnd())) {
                     banUtils.unban(uuid);
-                    BedtimeBanMod.logger.info("Unbanned " + playerName);
+                    LOGGER.info("Unbanned " + playerName);
                     banScheduler.clearScheduledBan(uuid);
                 } else if (scheduledBan.getStart() != null && now.isAfter(scheduledBan.getStart())) {
                     if (banUtils.ban(uuid)) {
-                        BedtimeBanMod.logger.info("Banned " + playerName);
+                        LOGGER.info("Banned " + playerName);
                         scheduledBan.setStart(null);
                         banScheduler.updateBan(uuid, scheduledBan);
                     }
@@ -70,19 +78,17 @@ public class BanHammer implements Runnable, Callable<Void> {
                     BanWarning nextWarning = BanWarning.values()[scheduledBan.getWarningsSent()];
                     Instant nextWarningInstant = scheduledBan.getStart().minus(nextWarning.amount, nextWarning.unit);
                     if (now.isAfter(nextWarningInstant)) {
-                        EntityPlayerMP player = server.getPlayerList().getPlayerByUUID(uuid);
+                        ServerPlayer player = server.getPlayerList().getPlayer(uuid);
                         if (player != null) {
-                            player.sendMessage(new TextComponentString(nextWarning.toUserString() + " until bedtime!"));
+                            player.sendSystemMessage(Component.literal(nextWarning.toUserString() + " until bedtime!"));
                         }
                         scheduledBan.setWarningsSent(nextWarning.ordinal() + 1);
                         banScheduler.updateBan(uuid, scheduledBan);
                     }
                 }
             } catch (Exception e) {
-                BedtimeBanMod.logger.error("Error processing scheduled ban data for " + playerName, e);
+                LOGGER.error("Error processing scheduled ban data for " + playerName, e);
             }
         }
-
-        return null;
     }
 }

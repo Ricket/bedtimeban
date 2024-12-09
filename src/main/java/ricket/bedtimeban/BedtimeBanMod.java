@@ -1,48 +1,64 @@
 package ricket.bedtimeban;
 
+import com.mojang.logging.LogUtils;
 import net.minecraftforge.common.MinecraftForge;
+import net.minecraftforge.event.RegisterCommandsEvent;
+import net.minecraftforge.event.TickEvent;
+import net.minecraftforge.event.entity.player.PlayerEvent;
+import net.minecraftforge.event.server.ServerStartingEvent;
+import net.minecraftforge.eventbus.api.EventPriority;
+import net.minecraftforge.eventbus.api.IEventBus;
+import net.minecraftforge.eventbus.api.SubscribeEvent;
 import net.minecraftforge.fml.common.Mod;
-import net.minecraftforge.fml.common.Mod.EventHandler;
-import net.minecraftforge.fml.common.Mod.Instance;
-import net.minecraftforge.fml.common.SidedProxy;
-import net.minecraftforge.fml.common.event.FMLPreInitializationEvent;
-import net.minecraftforge.fml.common.event.FMLServerStartedEvent;
-import net.minecraftforge.fml.common.event.FMLServerStartingEvent;
-import org.apache.logging.log4j.Logger;
+import net.minecraftforge.fml.config.ModConfig;
+import net.minecraftforge.fml.javafmlmod.FMLJavaModLoadingContext;
 import ricket.bedtimeban.proxy.IProxy;
+import ricket.bedtimeban.proxy.ServerProxy;
 
-@Mod(modid = BedtimeBanMod.MODID, name = BedtimeBanMod.NAME, version = BedtimeBanMod.VERSION,
-        serverSideOnly = true, acceptableRemoteVersions = "*")
+@Mod(BedtimeBanMod.MODID)
 public class BedtimeBanMod
 {
     public static final String MODID = "bedtimeban";
-    public static final String NAME = "Bedtime Ban";
-    public static final String VERSION = "1.0";
+    private static final org.slf4j.Logger LOGGER = LogUtils.getLogger();
 
-    public static Logger logger;
+    public BedtimeBanMod(FMLJavaModLoadingContext context)
+    {
+        MinecraftForge.EVENT_BUS.register(this);
 
-    @Instance(MODID)
-    public static BedtimeBanMod instance;
+        // Register our mod's ForgeConfigSpec so that Forge can create and load the config file for us
+        context.registerConfig(ModConfig.Type.SERVER, BedtimeBanConfig.SPEC);
 
-    @SidedProxy(serverSide = "ricket.bedtimeban.proxy.ServerProxy")
-    public static IProxy proxy;
+        BedtimeBanConfig configInst = new BedtimeBanConfig();
 
-    @EventHandler
-    public void preInit(FMLPreInitializationEvent event) {
-        logger = event.getModLog();
-        logger.info("Hello world!");
+        // ModConfigEvent is an IModBusEvent
+        IEventBus modEventBus = context.getModEventBus();
+        modEventBus.register(configInst);
 
-        proxy.preInit(event);
-        MinecraftForge.EVENT_BUS.register(proxy);
+        proxy = new ServerProxy(configInst, new BanScheduler(configInst));
     }
 
-    @EventHandler
-    public void serverStarting(FMLServerStartingEvent event) {
+    public static IProxy proxy;
+
+    @SubscribeEvent
+    public void serverStarting(ServerStartingEvent event)
+    {
         proxy.serverStarting(event);
     }
 
-    @EventHandler
-    public void serverStarted(FMLServerStartedEvent event) {
-        proxy.serverStarted(event);
+    @SubscribeEvent
+    public void registerCommands(RegisterCommandsEvent event)
+    {
+        proxy.registerCommands(event);
+    }
+
+    @SubscribeEvent
+    void serverTick(TickEvent.ServerTickEvent event)
+    {
+        proxy.serverTick(event);
+    }
+
+    @SubscribeEvent(priority = EventPriority.LOWEST)
+    public static void playerLoggedIn(PlayerEvent.PlayerLoggedInEvent event) {
+        proxy.playerLoggedIn(event);
     }
 }

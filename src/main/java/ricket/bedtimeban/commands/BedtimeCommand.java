@@ -1,117 +1,84 @@
 package ricket.bedtimeban.commands;
 
+import com.google.common.base.Preconditions;
+import com.mojang.brigadier.builder.ArgumentBuilder;
 import lombok.RequiredArgsConstructor;
-import net.minecraft.command.CommandException;
-import net.minecraft.command.ICommand;
-import net.minecraft.command.ICommandSender;
-import net.minecraft.entity.player.EntityPlayerMP;
-import net.minecraft.server.MinecraftServer;
-import net.minecraft.util.math.BlockPos;
-import net.minecraft.util.text.TextComponentString;
+import net.minecraft.commands.CommandSourceStack;
+import net.minecraft.commands.Commands;
+import net.minecraft.network.chat.Component;
+import net.minecraft.server.level.ServerPlayer;
 import ricket.bedtimeban.BanScheduler;
 import ricket.bedtimeban.BedtimeBanConfig;
 import ricket.bedtimeban.ScheduledBan;
-import ricket.bedtimeban.TimeParser;
 
-import javax.annotation.Nullable;
-import java.time.Instant;
-import java.time.ZoneId;
-import java.time.ZonedDateTime;
+import java.time.*;
 import java.time.format.DateTimeFormatter;
 import java.time.temporal.ChronoUnit;
-import java.util.Collections;
-import java.util.List;
-import java.util.UUID;
 
 @RequiredArgsConstructor
-public class BedtimeCommand implements ICommand {
+public class BedtimeCommand {
     private static final DateTimeFormatter DATETIME_FORMATTER = DateTimeFormatter.ofPattern("yyyy-MM-dd hh:mma z");
 
-    private final TimeParser timeParser;
+    private final BedtimeBanConfig config;
     private final BanScheduler banScheduler;
 
-    @Override
-    public String getName() {
-        return BedtimeBanConfig.commandBedtime;
+    private final Clock clock = Clock.systemUTC();
+
+    ArgumentBuilder<CommandSourceStack, ?> register()
+    {
+        return Commands.literal(config.getCommandBedtime())
+                .then(Commands.argument("time", new ClockTimeArgument())
+                        .executes(ctx -> {
+                            LocalTime userEnteredTime = ctx.getArgument("time", LocalTime.class);
+                            ServerPlayer player = ctx.getSource().getPlayerOrException();
+
+                            ScheduledBan scheduledBan = banScheduler.getScheduledBan(player.getUUID());
+                            if (scheduledBan != null) {
+                                player.sendSystemMessage(Component.literal("You already have a bedtime set."));
+                                return 1;
+                            }
+
+                            ZoneId timezone = banScheduler.getTimezone(player.getUUID());
+                            if (timezone == null) {
+                                player.sendSystemMessage(Component.literal(String.format("You have not configured your timezone yet. Use /%s to set your timezone first.", config.getCommandSetTimezone())));
+                                return 1;
+                            }
+
+                            ZonedDateTime dateTime = makeZonedDateTime(userEnteredTime, timezone);
+
+                            Instant startTime = dateTime.toInstant();
+                            Instant endTime = startTime.plus(8, ChronoUnit.HOURS);
+                            banScheduler.scheduleBan(player.getUUID(), startTime, endTime);
+
+                            player.sendSystemMessage(Component.literal(String.format("Ok, you will be banned at %s.", dateTime.format(DATETIME_FORMATTER))));
+
+                            return 1;
+                        }))
+                .executes(ctx -> {
+                    // if it's run without arguments, and a bedtime is set, remind them of their bedtime.
+                    ServerPlayer player = ctx.getSource().getPlayerOrException();
+                    String banReminderString = banScheduler.makeBanReminderString(player.getUUID());
+                    if (banReminderString != null) {
+                        player.sendSystemMessage(Component.literal(banReminderString));
+                    }
+                    return 0;
+                });
     }
 
-    @Override
-    public String getUsage(ICommandSender sender) {
-        return "/" + getName() + " 11:30pm";
-    }
+    private ZonedDateTime makeZonedDateTime(LocalTime time, ZoneId timezone) {
+        ZonedDateTime nowRoundedDown = Instant.now(clock)
+                .atZone(timezone)
+                .withMinute(0)
+                .withSecond(0)
+                .withNano(0);
 
-    @Override
-    public List<String> getAliases() {
-        return Collections.emptyList();
-    }
-
-    @Override
-    public void execute(MinecraftServer server, ICommandSender sender, String[] args) throws CommandException {
-        if (!(sender instanceof EntityPlayerMP)) {
-            sender.sendMessage(new TextComponentString("Must run command from a multiplayer session."));
-            return;
+        ZonedDateTime updatedTime = nowRoundedDown
+                .withHour(time.getHour())
+                .withMinute(time.getMinute());
+        if (updatedTime.isBefore(nowRoundedDown)) {
+            updatedTime = updatedTime.plusDays(1);
+            Preconditions.checkState(!updatedTime.isBefore(nowRoundedDown));
         }
-
-        UUID playerUuid = ((EntityPlayerMP) sender).getUniqueID();
-
-        if (args.length == 0) {
-            // if it's run without arguments, and a bedtime is set, remind them of their bedtime.
-            String banReminderString = banScheduler.makeBanReminderString(playerUuid);
-            if (banReminderString != null) {
-                sender.sendMessage(new TextComponentString(banReminderString));
-                return;
-            }
-        }
-
-        ScheduledBan scheduledBan = banScheduler.getScheduledBan(playerUuid);
-        if (scheduledBan != null) {
-            sender.sendMessage(new TextComponentString("You already have a bedtime set."));
-            return;
-        }
-
-        if (args.length != 1) {
-            sender.sendMessage(new TextComponentString("Usage: " + getUsage(sender)));
-            return;
-        }
-
-        ZoneId timezone = banScheduler.getTimezone(playerUuid);
-        if (timezone == null) {
-            sender.sendMessage(new TextComponentString(String.format("You have not configured your timezone yet. Use /%s to set your timezone first.", BedtimeBanConfig.commandSetTimezone)));
-            return;
-        }
-
-        String userEnteredTime = args[0];
-
-        ZonedDateTime dateTime = timeParser.parseUserInput(userEnteredTime, timezone);
-        if (dateTime == null) {
-            sender.sendMessage(new TextComponentString(String.format("Failed to parse '%s'", userEnteredTime)));
-            return;
-        }
-        Instant startTime = dateTime.toInstant();
-        Instant endTime = startTime.plus(8, ChronoUnit.HOURS);
-        banScheduler.scheduleBan(playerUuid, startTime, endTime);
-
-        sender.sendMessage(new TextComponentString(String.format("Ok, you will be banned at %s.", dateTime.format(DATETIME_FORMATTER))));
-    }
-
-    @Override
-    public boolean checkPermission(MinecraftServer server, ICommandSender sender) {
-        // anyone can use it
-        return true;
-    }
-
-    @Override
-    public List<String> getTabCompletions(MinecraftServer server, ICommandSender sender, String[] args, @Nullable BlockPos targetPos) {
-        return Collections.emptyList();
-    }
-
-    @Override
-    public boolean isUsernameIndex(String[] args, int index) {
-        return false;
-    }
-
-    @Override
-    public int compareTo(ICommand o) {
-        return getName().compareTo(o.getName());
+        return updatedTime;
     }
 }
