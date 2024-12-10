@@ -10,11 +10,12 @@ import java.time.ZoneId;
 public class ZoneIdSerializer extends TypeAdapter<ZoneId> {
     @Override
     public void write(JsonWriter out, ZoneId value) throws IOException {
-        out.value(value.getId());
+        out.value(value == null ? null : value.getId());
     }
 
     @Override
     public ZoneId read(JsonReader in) throws IOException {
-        return ZoneId.of(in.nextString());
+        String str = in.nextString();
+        return str == null ? null : ZoneId.of(str);
     }
 }

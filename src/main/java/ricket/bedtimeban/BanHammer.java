@@ -22,14 +22,12 @@ public class BanHammer {
 
     private final Clock clock = Clock.systemUTC();
 
-    private static final int TICKS_BETWEEN_CHECKS = 60 * 20; // 60 seconds in ticks
-    private int ticksToNextCheck;
-    private final RateLimiter starvationWarningRateLimit = RateLimiter.create(1.0 / 5.0);
+    private static final double SECONDS_BETWEEN_CHECKS = 60.0;
+    private final RateLimiter rateLimiter = RateLimiter.create(1.0 / SECONDS_BETWEEN_CHECKS);
 
     public void tick(MinecraftServer server, boolean haveTime)
     {
-        ticksToNextCheck--;
-        if (haveTime && ticksToNextCheck <= 0)
+        if (haveTime && rateLimiter.tryAcquire())
         {
             try
             {
@@ -38,16 +36,6 @@ public class BanHammer {
             catch (Exception e)
             {
                 LOGGER.error("Caught exception from BanHammer run", e);
-            }
-            finally
-            {
-                ticksToNextCheck = TICKS_BETWEEN_CHECKS;
-            }
-        }
-        else if (ticksToNextCheck < -TICKS_BETWEEN_CHECKS)
-        {
-            if (starvationWarningRateLimit.tryAcquire()) {
-                LOGGER.warn("BanHammer is being starved, has not run in {} seconds", Math.round((double)(TICKS_BETWEEN_CHECKS - ticksToNextCheck) / 20.0));
             }
         }
     }
@@ -67,7 +55,7 @@ public class BanHammer {
                     LOGGER.info("Unbanned " + playerName);
                     banScheduler.clearScheduledBan(uuid);
                 } else if (scheduledBan.getStart() != null && now.isAfter(scheduledBan.getStart())) {
-                    if (MinecraftServerBanUtils.ban(uuid, server)) {
+                    if (MinecraftServerBanUtils.ban(uuid, server, scheduledBan.getStart(), scheduledBan.getEnd())) {
                         LOGGER.info("Banned " + playerName);
                         scheduledBan.setStart(null);
                         banScheduler.updateBan(uuid, scheduledBan);

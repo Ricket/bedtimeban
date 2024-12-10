@@ -10,11 +10,12 @@ import java.time.Instant;
 public class InstantSerializer extends TypeAdapter<Instant> {
     @Override
     public void write(JsonWriter out, Instant value) throws IOException {
-        out.value(value.toString());
+        out.value(value == null ? null : value.toString());
     }
 
     @Override
     public Instant read(JsonReader in) throws IOException {
-        return Instant.parse(in.nextString());
+        String str = in.nextString();
+        return str == null ? null : Instant.parse(str);
     }
 }

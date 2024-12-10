@@ -76,28 +76,6 @@ public class BedtimeBanConfig {
     }
 
     @CheckForNull
-    private PlayerTimezone jsonToPlayerTimezone(UUID playerUuid, String json)
-    {
-        try {
-            return gson.fromJson(json, PlayerTimezone.class);
-        } catch (Exception e) {
-            LOGGER.warn("Corrupted json for {}", playerUuid);
-            return null;
-        }
-    }
-
-    @CheckForNull
-    private ScheduledBan jsonToScheduledBan(UUID playerUuid, String json) {
-        try {
-            return gson.fromJson(json, ScheduledBan.class);
-        } catch (Exception e) {
-            LOGGER.warn("Corrupted json for {}", playerUuid);
-            clearScheduledBan(playerUuid);
-            return null;
-        }
-    }
-
-    @CheckForNull
     public PlayerTimezone getTimezone(UUID playerUuid)
     {
         return timezones.get(playerUuid);
@@ -105,12 +83,15 @@ public class BedtimeBanConfig {
 
     public synchronized void putTimezone(UUID playerUuid, PlayerTimezone timezone)
     {
+        Preconditions.checkArgument(playerUuid.equals(timezone.getPlayerUuid()));
+
         timezones.put(playerUuid, timezone);
-        // TODO save into the TIMEZONES config
-//        Map<String, String> configTimezones = TIMEZONES.get();
-//        configTimezones.put(playerUuid.toString(), timezone.getId());
-//        TIMEZONES.set(configTimezones);
-//        TIMEZONES.save();
+
+        TIMEZONES.set(timezones.values().stream()
+                .sorted(Comparator.comparing(PlayerTimezone::getPlayerUuid))
+                .map(gson::toJson)
+                .collect(Collectors.toList()));
+        TIMEZONES.save();
     }
 
     @CheckForNull
@@ -126,25 +107,19 @@ public class BedtimeBanConfig {
 
     public synchronized void setScheduledBan(UUID playerUuid, @Nullable ScheduledBan scheduledBan)
     {
-        if (scheduledBan == null)
-        {
-            clearScheduledBan(playerUuid);
-            return;
+        Preconditions.checkArgument(scheduledBan == null || playerUuid.equals(scheduledBan.getPlayerUuid()));
+
+        if (scheduledBan == null) {
+            scheduledBans.remove(playerUuid);
+        } else {
+            scheduledBans.put(playerUuid, scheduledBan);
         }
 
-        Preconditions.checkArgument(scheduledBan == null || playerUuid.equals(scheduledBan.getPlayerUuid()));
-        // TODO save into the SCHEDULED_BANS config and also scheduledBans map
-//        List<String> configScheduledBans = SCHEDULED_BANS.get();
-//        if (scheduledBan == null) {
-//            scheduledBans.remove(playerUuid);
-//
-//            configScheduledBans.remove(playerUuid.toString());
-//        } else {
-//            scheduledBans.put(playerUuid, scheduledBan);
-//            configScheduledBans.put(playerUuid.toString(), gson.toJson(scheduledBan));
-//        }
-//        SCHEDULED_BANS.set(configScheduledBans);
-//        SCHEDULED_BANS.save();
+        SCHEDULED_BANS.set(scheduledBans.values().stream()
+                .sorted(Comparator.comparing(ScheduledBan::getPlayerUuid))
+                .map(gson::toJson)
+                .collect(Collectors.toList()));
+        SCHEDULED_BANS.save();
     }
 
     public synchronized boolean clearScheduledBan(UUID uuid) {
@@ -153,10 +128,7 @@ public class BedtimeBanConfig {
             return false;
         }
 
-        // TODO find and remove the entry from SCHEDULED_BANS and also remove from scheduledBans member
-//        List<String> configScheduledBans = SCHEDULED_BANS.get();
-
-
+        setScheduledBan(uuid, null);
         return true;
     }
 }

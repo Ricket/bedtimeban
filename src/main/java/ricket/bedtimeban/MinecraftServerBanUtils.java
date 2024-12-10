@@ -9,6 +9,8 @@ import net.minecraft.server.players.PlayerList;
 import net.minecraft.server.players.UserBanList;
 import net.minecraft.server.players.UserBanListEntry;
 
+import java.time.Instant;
+import java.util.Date;
 import java.util.Objects;
 import java.util.UUID;
 
@@ -18,7 +20,7 @@ public class MinecraftServerBanUtils {
     /**
      * @return true if the player is now banned; false if the player was already banned (or error)
      */
-    public static boolean ban(UUID uuid, MinecraftServer server) {
+    public static boolean ban(UUID uuid, MinecraftServer server, Instant start, Instant expires) {
         // This flow was copied from BanPlayerCommands
 
         GameProfile gameprofile = getGameProfile(uuid, server);
@@ -30,12 +32,12 @@ public class MinecraftServerBanUtils {
             return false;
         }
 
-        UserBanListEntry entry = new UserBanListEntry(gameprofile, null, "BedtimeBan", null, "Bed time!");
+        UserBanListEntry entry = new UserBanListEntry(gameprofile, Date.from(start), "BedtimeBan", Date.from(expires), "Bed time!");
         bannedPlayers.add(entry);
 
         ServerPlayer entityPlayer = playerList.getPlayer(uuid);
         if (entityPlayer != null) {
-            entityPlayer.connection.disconnect(Component.translatable("multiplayer.bedtimeban.disconnect"));
+            entityPlayer.connection.disconnect(Component.literal("Good night!"));
         }
 
         return true;

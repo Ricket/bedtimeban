@@ -25,6 +25,18 @@ public class SetTimezoneCommand {
     ArgumentBuilder<CommandSourceStack, ?> register()
     {
         return Commands.literal(COMMAND)
+                .executes(ctx -> {
+                    ServerPlayer player = ctx.getSource().getPlayerOrException();
+
+                    PlayerTimezone timezone = banScheduler.getTimezone(player.getUUID());
+                    if (timezone == null) {
+                        ctx.getSource().sendSystemMessage(Component.literal("You haven't set a timezone yet."));
+                    } else {
+                        ctx.getSource().sendSystemMessage(Component.literal(String.format("Your timezone is: %s (%s)", timezone.getZoneId().getDisplayName(TextStyle.FULL, Locale.getDefault()), timezone.getZoneId().getId())));
+                    }
+
+                    return 0;
+                })
                 .then(Commands.argument("tz", StringArgumentType.greedyString())
                         .executes(ctx -> {
                             ServerPlayer player = ctx.getSource().getPlayerOrException();
