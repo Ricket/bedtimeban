@@ -1,7 +1,7 @@
 package ricket.bedtimeban;
 
 import com.mojang.authlib.GameProfile;
-import lombok.RequiredArgsConstructor;
+import lombok.experimental.UtilityClass;
 import net.minecraft.network.chat.Component;
 import net.minecraft.server.MinecraftServer;
 import net.minecraft.server.level.ServerPlayer;
@@ -12,18 +12,16 @@ import net.minecraft.server.players.UserBanListEntry;
 import java.util.Objects;
 import java.util.UUID;
 
-@RequiredArgsConstructor
+@UtilityClass
 public class MinecraftServerBanUtils {
-
-    private final MinecraftServer server;
 
     /**
      * @return true if the player is now banned; false if the player was already banned (or error)
      */
-    public boolean ban(UUID uuid) {
+    public static boolean ban(UUID uuid, MinecraftServer server) {
         // This flow was copied from BanPlayerCommands
 
-        GameProfile gameprofile = getGameProfile(uuid);
+        GameProfile gameprofile = getGameProfile(uuid, server);
 
         PlayerList playerList = server.getPlayerList();
 
@@ -43,10 +41,10 @@ public class MinecraftServerBanUtils {
         return true;
     }
 
-    public void unban(UUID uuid) {
+    public void unban(UUID uuid, MinecraftServer server) {
         // This flow was copied from PardonCommand
 
-        GameProfile gameprofile = getGameProfile(uuid);
+        GameProfile gameprofile = getGameProfile(uuid, server);
 
         UserBanList bans = server.getPlayerList().getBans();
         if (bans.isBanned(gameprofile))
@@ -55,13 +53,13 @@ public class MinecraftServerBanUtils {
         }
     }
 
-    private GameProfile getGameProfile(UUID uuid)
+    private GameProfile getGameProfile(UUID uuid, MinecraftServer server)
     {
         return Objects.requireNonNull(server.getProfileCache()).get(uuid)
-                .orElseThrow(() -> new RuntimeException("Could not find GameProfile for player " + uuidToPlayerName(uuid)));
+                .orElseThrow(() -> new RuntimeException("Could not find GameProfile for player " + uuidToPlayerName(uuid, server)));
     }
 
-    public String uuidToPlayerName(UUID uuid) {
+    public String uuidToPlayerName(UUID uuid, MinecraftServer server) {
         ServerPlayer player = server.getPlayerList().getPlayer(uuid);
         if (player == null) {
             return uuid.toString();

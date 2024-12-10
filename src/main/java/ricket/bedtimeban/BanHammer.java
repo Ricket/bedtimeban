@@ -18,8 +18,6 @@ public class BanHammer {
 
     private static final org.slf4j.Logger LOGGER = LogUtils.getLogger();
 
-    private final MinecraftServer server;
-    private final MinecraftServerBanUtils banUtils;
     private final BanScheduler banScheduler;
 
     private final Clock clock = Clock.systemUTC();
@@ -28,14 +26,14 @@ public class BanHammer {
     private int ticksToNextCheck;
     private final RateLimiter starvationWarningRateLimit = RateLimiter.create(1.0 / 5.0);
 
-    public void tick(boolean haveTime)
+    public void tick(MinecraftServer server, boolean haveTime)
     {
         ticksToNextCheck--;
         if (haveTime && ticksToNextCheck <= 0)
         {
             try
             {
-                processBans();
+                processBans(server);
             }
             catch (Exception e)
             {
@@ -54,22 +52,22 @@ public class BanHammer {
         }
     }
 
-    private void processBans() {
+    private void processBans(MinecraftServer server) {
         Instant now = Instant.now(clock);
 
         Map<UUID, ScheduledBan> scheduledBans = banScheduler.getScheduledBans();
         for (Entry<UUID, ScheduledBan> entry : scheduledBans.entrySet()) {
             UUID uuid = entry.getKey();
-            String playerName = banUtils.uuidToPlayerName(uuid);
+            String playerName = MinecraftServerBanUtils.uuidToPlayerName(uuid, server);
             try {
                 ScheduledBan scheduledBan = entry.getValue();
 
                 if (scheduledBan.getEnd() != null && now.isAfter(scheduledBan.getEnd())) {
-                    banUtils.unban(uuid);
+                    MinecraftServerBanUtils.unban(uuid, server);
                     LOGGER.info("Unbanned " + playerName);
                     banScheduler.clearScheduledBan(uuid);
                 } else if (scheduledBan.getStart() != null && now.isAfter(scheduledBan.getStart())) {
-                    if (banUtils.ban(uuid)) {
+                    if (MinecraftServerBanUtils.ban(uuid, server)) {
                         LOGGER.info("Banned " + playerName);
                         scheduledBan.setStart(null);
                         banScheduler.updateBan(uuid, scheduledBan);

@@ -6,8 +6,8 @@ import net.minecraftforge.event.entity.player.PlayerEvent;
 import net.minecraftforge.event.server.ServerStartingEvent;
 
 public interface IProxy {
-    void serverStarting(ServerStartingEvent event);
     void registerCommands(RegisterCommandsEvent event);
+    void serverStarting(ServerStartingEvent event);
     void serverTick(TickEvent.ServerTickEvent event);
     void playerLoggedIn(PlayerEvent.PlayerLoggedInEvent event);
 }

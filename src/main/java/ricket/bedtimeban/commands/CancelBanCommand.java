@@ -8,24 +8,22 @@ import net.minecraft.commands.arguments.EntityArgument;
 import net.minecraft.network.chat.Component;
 import net.minecraft.server.level.ServerPlayer;
 import ricket.bedtimeban.BanScheduler;
-import ricket.bedtimeban.BedtimeBanConfig;
 import ricket.bedtimeban.MinecraftServerBanUtils;
 
 @RequiredArgsConstructor
 public class CancelBanCommand {
+    private static final String COMMAND = "cancelbedtime";
 
-    private final BedtimeBanConfig config;
     private final BanScheduler banScheduler;
-    private final MinecraftServerBanUtils banUtils;
 
     ArgumentBuilder<CommandSourceStack, ?> register()
     {
-        return Commands.literal(config.getCommandCancel())
+        return Commands.literal(COMMAND)
                 .requires(cs -> cs.hasPermission(4))
                 .then(Commands.argument("player", EntityArgument.player())
                         .executes(ctx -> {
                             ServerPlayer player = EntityArgument.getPlayer(ctx, "player");
-                            banUtils.unban(player.getUUID());
+                            MinecraftServerBanUtils.unban(player.getUUID(), ctx.getSource().getServer());
                             boolean removed = banScheduler.clearScheduledBan(player.getUUID());
                             if (removed) {
                                 ctx.getSource().sendSystemMessage(Component.literal("Ban has been cancelled."));

@@ -1,38 +1,34 @@
 package ricket.bedtimeban.proxy;
 
-import lombok.RequiredArgsConstructor;
 import net.minecraft.network.chat.Component;
-import net.minecraft.server.MinecraftServer;
 import net.minecraftforge.event.RegisterCommandsEvent;
 import net.minecraftforge.event.TickEvent;
 import net.minecraftforge.event.entity.player.PlayerEvent;
 import net.minecraftforge.event.server.ServerStartingEvent;
 import ricket.bedtimeban.BanHammer;
 import ricket.bedtimeban.BanScheduler;
-import ricket.bedtimeban.BedtimeBanConfig;
-import ricket.bedtimeban.MinecraftServerBanUtils;
 import ricket.bedtimeban.commands.BedtimeBanCommands;
 
-@RequiredArgsConstructor
 public class ServerProxy implements IProxy {
 
-    private final BedtimeBanConfig config;
     private final BanScheduler banScheduler;
-    private MinecraftServerBanUtils banUtils;
     private BanHammer banHammer;
     private BedtimeBanCommands commands;
 
-    @Override
-    public void serverStarting(ServerStartingEvent event) {
-        MinecraftServer server = event.getServer();
-        banUtils = new MinecraftServerBanUtils(server);
-        banHammer = new BanHammer(server, banUtils, banScheduler);
+    public ServerProxy(BanScheduler banScheduler)
+    {
+        this.banScheduler = banScheduler;
+        this.commands = new BedtimeBanCommands(banScheduler);
     }
 
     @Override
     public void registerCommands(RegisterCommandsEvent event) {
-        commands = new BedtimeBanCommands(config, banScheduler, banUtils);
         commands.register(event.getDispatcher());
+    }
+
+    @Override
+    public void serverStarting(ServerStartingEvent event) {
+        banHammer = new BanHammer(banScheduler);
     }
 
     @Override
@@ -41,7 +37,7 @@ public class ServerProxy implements IProxy {
             return;
         }
 
-        banHammer.tick(event.haveTime());
+        banHammer.tick(event.getServer(), event.haveTime());
     }
 
     @Override

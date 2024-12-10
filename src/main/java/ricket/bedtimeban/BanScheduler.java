@@ -6,7 +6,6 @@ import lombok.RequiredArgsConstructor;
 import javax.annotation.CheckForNull;
 import javax.annotation.Nonnull;
 import java.time.Instant;
-import java.time.ZoneId;
 import java.time.ZonedDateTime;
 import java.time.format.DateTimeFormatter;
 import java.util.Map;
@@ -17,12 +16,12 @@ public class BanScheduler {
     private static final DateTimeFormatter TIME_FORMATTER = DateTimeFormatter.ofPattern("hh:mma z");
     private final BedtimeBanConfig config;
 
-    public void setTimezone(UUID uuid, ZoneId timezone) {
+    public void setTimezone(UUID uuid, PlayerTimezone timezone) {
         config.putTimezone(uuid, timezone);
     }
 
     @CheckForNull
-    public ZoneId getTimezone(UUID playerUuid) {
+    public PlayerTimezone getTimezone(UUID playerUuid) {
         return config.getTimezone(playerUuid);
     }
 
@@ -30,7 +29,7 @@ public class BanScheduler {
         Preconditions.checkArgument(startTime.isBefore(endTime), "Expected start time " + startTime + " before end time " + endTime);
 
         // save to config
-        ScheduledBan scheduledBan = new ScheduledBan(startTime, endTime, "Bedtime", 0);
+        ScheduledBan scheduledBan = new ScheduledBan(playerUuid, startTime, endTime, "Bedtime", 0);
         updateBan(playerUuid, scheduledBan);
     }
 
@@ -64,12 +63,12 @@ public class BanScheduler {
             return null;
         }
 
-        ZoneId timezone = getTimezone(playerUuid);
+        PlayerTimezone timezone = getTimezone(playerUuid);
         if (timezone == null) {
             return null;
         }
 
-        ZonedDateTime zonedDateTime = start.atZone(timezone);
+        ZonedDateTime zonedDateTime = start.atZone(timezone.getZoneId());
 
         // formattedTime will be like "11:30pm PDT"
         String formattedTime = zonedDateTime.format(TIME_FORMATTER);

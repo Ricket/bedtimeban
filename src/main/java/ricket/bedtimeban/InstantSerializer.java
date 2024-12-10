@@ -1,24 +1,20 @@
 package ricket.bedtimeban;
 
-import com.google.gson.JsonDeserializationContext;
-import com.google.gson.JsonDeserializer;
-import com.google.gson.JsonElement;
-import com.google.gson.JsonParseException;
-import com.google.gson.JsonPrimitive;
-import com.google.gson.JsonSerializationContext;
-import com.google.gson.JsonSerializer;
+import com.google.gson.TypeAdapter;
+import com.google.gson.stream.JsonReader;
+import com.google.gson.stream.JsonWriter;
 
-import java.lang.reflect.Type;
+import java.io.IOException;
 import java.time.Instant;
 
-public class InstantSerializer implements JsonSerializer<Instant>, JsonDeserializer<Instant> {
+public class InstantSerializer extends TypeAdapter<Instant> {
     @Override
-    public JsonElement serialize(Instant src, Type typeOfSrc, JsonSerializationContext context) {
-        return new JsonPrimitive(src.toString());
+    public void write(JsonWriter out, Instant value) throws IOException {
+        out.value(value.toString());
     }
 
     @Override
-    public Instant deserialize(JsonElement json, Type typeOfT, JsonDeserializationContext context) throws JsonParseException {
-        return Instant.parse(json.getAsString());
+    public Instant read(JsonReader in) throws IOException {
+        return Instant.parse(in.nextString());
     }
 }

@@ -19,8 +19,14 @@ import java.util.concurrent.CompletableFuture;
 
 public class TimezoneArgument implements ArgumentType<ZoneId> {
     private static final Logger LOGGER = LogUtils.getLogger();
+    public static final String KEY = "timezone";
 
     private static final SimpleCommandExceptionType ERROR_TIMEZONE_NOT_FOUND = new SimpleCommandExceptionType(Component.translatable("commands.bedtimeban.timezone.notfound"));
+
+    public static TimezoneArgument timezone()
+    {
+        return new TimezoneArgument();
+    }
 
     @Override
     public ZoneId parse(StringReader reader) throws CommandSyntaxException {

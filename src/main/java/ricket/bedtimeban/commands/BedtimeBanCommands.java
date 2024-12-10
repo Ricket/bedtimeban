@@ -4,32 +4,51 @@ import com.google.common.base.Preconditions;
 import com.mojang.brigadier.CommandDispatcher;
 import com.mojang.brigadier.builder.LiteralArgumentBuilder;
 import net.minecraft.commands.CommandSourceStack;
+import net.minecraft.network.chat.Component;
+import net.minecraft.server.level.ServerPlayer;
 import ricket.bedtimeban.BanScheduler;
-import ricket.bedtimeban.BedtimeBanConfig;
-import ricket.bedtimeban.MinecraftServerBanUtils;
 
 public class BedtimeBanCommands {
 
-    private final BedtimeCommand bedtimeCommand;
+    private final BanScheduler banScheduler;
+    private final SetBedtimeCommand setBedtimeCommand;
     private final CancelBanCommand cancelBanCommand;
     private final SetTimezoneCommand setTimezoneCommand;
 
-    public BedtimeBanCommands(BedtimeBanConfig config, BanScheduler banScheduler, MinecraftServerBanUtils banUtils)
+    public BedtimeBanCommands(BanScheduler banScheduler)
     {
-        Preconditions.checkNotNull(config, "config");
         Preconditions.checkNotNull(banScheduler, "banScheduler");
-        Preconditions.checkNotNull(banUtils, "banUtils");
+        this.banScheduler = banScheduler;
 
-        bedtimeCommand = new BedtimeCommand(config, banScheduler);
-        cancelBanCommand = new CancelBanCommand(config, banScheduler, banUtils);
-        setTimezoneCommand = new SetTimezoneCommand(config, banScheduler);
+        setBedtimeCommand = new SetBedtimeCommand(banScheduler);
+        cancelBanCommand = new CancelBanCommand(banScheduler);
+        setTimezoneCommand = new SetTimezoneCommand(banScheduler);
+
+//        ForgeRegistries.COMMAND_ARGUMENT_TYPES.register(ClockTimeArgument.KEY,
+//                ArgumentTypeInfos.registerByClass(ClockTimeArgument.class,
+//                        SingletonArgumentInfo.contextFree(ClockTimeArgument::clockTime)));
+//
+//        ForgeRegistries.COMMAND_ARGUMENT_TYPES.register(TimezoneArgument.KEY,
+//                ArgumentTypeInfos.registerByClass(TimezoneArgument.class,
+//                        SingletonArgumentInfo.contextFree(TimezoneArgument::timezone)));
     }
 
     public void register(CommandDispatcher<CommandSourceStack> dispatcher)
     {
         dispatcher.register(
                 LiteralArgumentBuilder.<CommandSourceStack>literal("bedtime")
-                        .then(bedtimeCommand.register())
+                        .executes(ctx -> {
+                            // if it's run without arguments, and a bedtime is set, remind them of their bedtime.
+                            ServerPlayer player = ctx.getSource().getPlayerOrException();
+                            String banReminderString = banScheduler.makeBanReminderString(player.getUUID());
+                            if (banReminderString != null) {
+                                player.sendSystemMessage(Component.literal(banReminderString));
+                            } else {
+                                player.sendSystemMessage(Component.literal("You haven't set a bedtime yet."));
+                            }
+                            return 0;
+                        })
+                        .then(setBedtimeCommand.register())
                         .then(cancelBanCommand.register())
                         .then(setTimezoneCommand.register())
         );

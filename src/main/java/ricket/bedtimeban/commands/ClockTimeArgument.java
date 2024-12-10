@@ -12,9 +12,15 @@ import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
 public class ClockTimeArgument implements ArgumentType<LocalTime> {
+    public static final String KEY = "clocktime";
 
     private final Pattern hourAmpmPattern = Pattern.compile("^(1[0-2]|0?[1-9])(am|pm)$");
     private final Pattern hourMinuteAmpmPattern = Pattern.compile("^(1[0-2]|0?[1-9]):([0-5][0-9])(am|pm)$");
+
+    public static ClockTimeArgument clockTime()
+    {
+        return new ClockTimeArgument();
+    }
 
     @Override
     public LocalTime parse(StringReader reader) throws CommandSyntaxException {

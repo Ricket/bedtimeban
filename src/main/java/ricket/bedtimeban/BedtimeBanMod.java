@@ -1,6 +1,5 @@
 package ricket.bedtimeban;
 
-import com.mojang.logging.LogUtils;
 import net.minecraftforge.common.MinecraftForge;
 import net.minecraftforge.event.RegisterCommandsEvent;
 import net.minecraftforge.event.TickEvent;
@@ -19,7 +18,6 @@ import ricket.bedtimeban.proxy.ServerProxy;
 public class BedtimeBanMod
 {
     public static final String MODID = "bedtimeban";
-    private static final org.slf4j.Logger LOGGER = LogUtils.getLogger();
 
     public BedtimeBanMod(FMLJavaModLoadingContext context)
     {
@@ -34,7 +32,7 @@ public class BedtimeBanMod
         IEventBus modEventBus = context.getModEventBus();
         modEventBus.register(configInst);
 
-        proxy = new ServerProxy(configInst, new BanScheduler(configInst));
+        proxy = new ServerProxy(new BanScheduler(configInst));
     }
 
     public static IProxy proxy;
@@ -58,7 +56,8 @@ public class BedtimeBanMod
     }
 
     @SubscribeEvent(priority = EventPriority.LOWEST)
-    public static void playerLoggedIn(PlayerEvent.PlayerLoggedInEvent event) {
+    public static void playerLoggedIn(PlayerEvent.PlayerLoggedInEvent event)
+    {
         proxy.playerLoggedIn(event);
     }
 }
