@@ -12,7 +12,7 @@ import ricket.bedtimeban.MinecraftServerBanUtils;
 
 @RequiredArgsConstructor
 public class CancelBanCommand {
-    private static final String COMMAND = "cancelbedtime";
+    private static final String COMMAND = "cancel";
 
     private final BanScheduler banScheduler;
 
@@ -20,15 +20,27 @@ public class CancelBanCommand {
     {
         return Commands.literal(COMMAND)
                 .requires(cs -> cs.hasPermission(4))
+                .executes(ctx -> {
+                    ServerPlayer player = ctx.getSource().getPlayerOrException();
+                    MinecraftServerBanUtils.unban(player.getUUID(), ctx.getSource().getServer());
+                    boolean removed = banScheduler.clearScheduledBan(player.getUUID());
+                    if (removed) {
+                        ctx.getSource().sendSystemMessage(Component.literal("Your bedtime ban has been cancelled."));
+                    } else {
+                        ctx.getSource().sendSystemMessage(Component.literal("You do not have a bedtime scheduled."));
+                    }
+                    return 1;
+                })
                 .then(Commands.argument("player", EntityArgument.player())
+                        .requires(cs -> cs.hasPermission(4))
                         .executes(ctx -> {
                             ServerPlayer player = EntityArgument.getPlayer(ctx, "player");
                             MinecraftServerBanUtils.unban(player.getUUID(), ctx.getSource().getServer());
                             boolean removed = banScheduler.clearScheduledBan(player.getUUID());
                             if (removed) {
-                                ctx.getSource().sendSystemMessage(Component.literal("Ban has been cancelled."));
+                                ctx.getSource().sendSystemMessage(Component.literal("Ban has been cancelled for player: ").append(player.getName()));
                             } else {
-                                ctx.getSource().sendSystemMessage(Component.literal("There was not a scheduled ban."));
+                                ctx.getSource().sendSystemMessage(Component.literal("There was not a scheduled ban for player: ").append(player.getName()));
                             }
                             return 1;
                         }));

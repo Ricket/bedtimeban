@@ -10,6 +10,7 @@ import net.minecraft.server.level.ServerPlayer;
 import ricket.bedtimeban.BanScheduler;
 import ricket.bedtimeban.PlayerTimezone;
 
+import javax.annotation.CheckForNull;
 import java.time.ZoneId;
 import java.time.format.TextStyle;
 import java.util.Locale;
@@ -17,29 +18,43 @@ import java.util.Locale;
 @RequiredArgsConstructor
 public class SetTimezoneCommand {
 
-    public static final String COMMAND = "setmytimezone";
+    public static final String COMMAND = "timezone";
 
     private final BanScheduler banScheduler;
 
     ArgumentBuilder<CommandSourceStack, ?> register()
     {
         return Commands.literal(COMMAND)
-                .then(Commands.argument("tz", StringArgumentType.string()) // TimezoneArgument.timezone()
+                .then(Commands.argument("tz", StringArgumentType.greedyString())
                         .executes(ctx -> {
-                            // set the timezone
-                            ZoneId userEnteredTimezone = ctx.getArgument("tz", ZoneId.class);
                             ServerPlayer player = ctx.getSource().getPlayerOrException();
 
                             if (banScheduler.hasScheduledBan(player.getUUID())) {
                                 ctx.getSource().sendSystemMessage(Component.literal("You already have a ban scheduled! Cannot change timezone."));
-                                return 0;
+                                return 1;
+                            }
+
+                            String userEnteredTimezoneStr = ctx.getArgument("tz", String.class);
+                            ZoneId userEnteredTimezone = parse(userEnteredTimezoneStr);
+                            if (userEnteredTimezone == null) {
+                                ctx.getSource().sendSystemMessage(Component.literal("No such timezone. Use a standard timezone ID like \"US/Pacific\" or \"America/Chicago\" or \"EDT\"."));
+                                return 1;
                             }
 
                             banScheduler.setTimezone(player.getUUID(), new PlayerTimezone(player.getUUID(), userEnteredTimezone));
 
                             ctx.getSource().sendSystemMessage(Component.literal(String.format("Updated your timezone to %s (%s).", userEnteredTimezone.getDisplayName(TextStyle.FULL, Locale.getDefault()), userEnteredTimezone.getId())));
 
-                            return 1;
+                            return 0;
                         }));
+    }
+
+    @CheckForNull
+    private ZoneId parse(String userEnteredTimezone) {
+        try {
+            return ZoneId.of(userEnteredTimezone);
+        } catch (Exception e) {
+            return null;
+        }
     }
 }

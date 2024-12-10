@@ -23,14 +23,6 @@ public class BedtimeBanCommands {
         setBedtimeCommand = new SetBedtimeCommand(banScheduler);
         cancelBanCommand = new CancelBanCommand(banScheduler);
         setTimezoneCommand = new SetTimezoneCommand(banScheduler);
-
-//        ForgeRegistries.COMMAND_ARGUMENT_TYPES.register(ClockTimeArgument.KEY,
-//                ArgumentTypeInfos.registerByClass(ClockTimeArgument.class,
-//                        SingletonArgumentInfo.contextFree(ClockTimeArgument::clockTime)));
-//
-//        ForgeRegistries.COMMAND_ARGUMENT_TYPES.register(TimezoneArgument.KEY,
-//                ArgumentTypeInfos.registerByClass(TimezoneArgument.class,
-//                        SingletonArgumentInfo.contextFree(TimezoneArgument::timezone)));
     }
 
     public void register(CommandDispatcher<CommandSourceStack> dispatcher)

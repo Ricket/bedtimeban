@@ -12,13 +12,18 @@ import ricket.bedtimeban.BanScheduler;
 import ricket.bedtimeban.PlayerTimezone;
 import ricket.bedtimeban.ScheduledBan;
 
+import javax.annotation.CheckForNull;
 import java.time.*;
 import java.time.format.DateTimeFormatter;
 import java.time.temporal.ChronoUnit;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
 
 @RequiredArgsConstructor
 public class SetBedtimeCommand {
     private static final DateTimeFormatter DATETIME_FORMATTER = DateTimeFormatter.ofPattern("yyyy-MM-dd hh:mma z");
+    private final Pattern hourAmpmPattern = Pattern.compile("^(1[0-2]|0?[1-9])(am|pm)$");
+    private final Pattern hourMinuteAmpmPattern = Pattern.compile("^(1[0-2]|0?[1-9]):([0-5][0-9])(am|pm)$");
     private static final String COMMAND = "set";
 
     private final BanScheduler banScheduler;
@@ -28,20 +33,26 @@ public class SetBedtimeCommand {
     ArgumentBuilder<CommandSourceStack, ?> register()
     {
         return Commands.literal(COMMAND)
-                .then(Commands.argument("time", StringArgumentType.string()) // ClockTimeArgument.clockTime()
+                .then(Commands.argument("time", StringArgumentType.greedyString())
                         .executes(ctx -> {
-                            LocalTime userEnteredTime = ctx.getArgument("time", LocalTime.class);
                             ServerPlayer player = ctx.getSource().getPlayerOrException();
 
-                            ScheduledBan scheduledBan = banScheduler.getScheduledBan(player.getUUID());
-                            if (scheduledBan != null) {
-                                player.sendSystemMessage(Component.literal("You already have a bedtime set."));
+                            String userEnteredTimeStr = ctx.getArgument("time", String.class);
+                            LocalTime userEnteredTime = parse(userEnteredTimeStr);
+                            if (userEnteredTime == null) {
+                                ctx.getSource().sendSystemMessage(Component.literal("The time argument should be a 12-hr time with am or pm after it. Example: 11:30pm"));
                                 return 1;
                             }
 
                             PlayerTimezone timezone = banScheduler.getTimezone(player.getUUID());
                             if (timezone == null) {
-                                player.sendSystemMessage(Component.literal(String.format("You have not configured your timezone yet. Use /%s to set your timezone first.", SetTimezoneCommand.COMMAND)));
+                                ctx.getSource().sendSystemMessage(Component.literal(String.format("You have not configured your timezone yet. Use `/bedtime %s` to set your timezone first.", SetTimezoneCommand.COMMAND)));
+                                return 1;
+                            }
+
+                            ScheduledBan scheduledBan = banScheduler.getScheduledBan(player.getUUID());
+                            if (scheduledBan != null) {
+                                ctx.getSource().sendSystemMessage(Component.literal("You already have a bedtime set."));
                                 return 1;
                             }
 
@@ -51,10 +62,63 @@ public class SetBedtimeCommand {
                             Instant endTime = startTime.plus(8, ChronoUnit.HOURS);
                             banScheduler.scheduleBan(player.getUUID(), startTime, endTime);
 
-                            player.sendSystemMessage(Component.literal(String.format("Ok, you will be banned at %s.", dateTime.format(DATETIME_FORMATTER))));
+                            ctx.getSource().sendSystemMessage(Component.literal(String.format("Ok, you will be banned at %s.", dateTime.format(DATETIME_FORMATTER))));
 
-                            return 1;
+                            return 0;
                         }));
+    }
+
+    private LocalTime parse(String userInputTime) {
+        String str = userInputTime.trim().toLowerCase();
+
+        LocalTime hourAmpm = tryParseHourAmpm(str);
+        if (hourAmpm != null) {
+            return hourAmpm;
+        }
+
+        LocalTime hourMinuteAmpm = tryParseHourMinuteAmpm(str);
+        if (hourMinuteAmpm != null) {
+            return hourMinuteAmpm;
+        }
+
+        // TODO other formats
+
+        return null;
+    }
+
+    @CheckForNull
+    private LocalTime tryParseHourAmpm(String str) {
+        Matcher matcher = hourAmpmPattern.matcher(str);
+        if (!matcher.matches()) {
+            return null;
+        }
+
+        int hourNum = Integer.parseInt(matcher.group(1), 10);
+        boolean pm = matcher.group(2).equals("pm");
+
+        return LocalTime.of(toHour24(hourNum, pm), 0);
+    }
+
+    @CheckForNull
+    private LocalTime tryParseHourMinuteAmpm(String str) {
+        Matcher matcher = hourMinuteAmpmPattern.matcher(str);
+        if (!matcher.matches()) {
+            return null;
+        }
+
+        int hourNum = Integer.parseInt(matcher.group(1), 10);
+        int minuteNum = Integer.parseInt(matcher.group(2), 10);
+        boolean pm = matcher.group(3).equals("pm");
+
+        return LocalTime.of(toHour24(hourNum, pm), minuteNum);
+    }
+
+    private int toHour24(int hour, boolean pm) {
+        if (hour == 12) {
+            return pm ? 12 : 0;
+        } else {
+            return hour + (pm ? 12 : 0);
+        }
     }
 
     private ZonedDateTime makeZonedDateTime(LocalTime time, ZoneId timezone) {
