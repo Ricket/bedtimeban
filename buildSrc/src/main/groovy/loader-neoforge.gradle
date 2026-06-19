@@ -1,0 +1,65 @@
+plugins {
+    id 'mc-common'
+    id 'net.neoforged.gradle.userdev'
+}
+
+base {
+    archivesName = rootProject.mod_id
+}
+
+sourceSets.main.resources.srcDir('src/generated/resources')
+
+dependencies {
+    implementation project(':core')
+    implementation project(':common')
+    implementation "net.neoforged:neoforge:${rootProject.neo_version}"
+}
+
+tasks.named('jar', Jar).configure {
+    from(project(':core').sourceSets.main.output)
+    from(project(':common').sourceSets.main.output)
+}
+
+runs {
+    configureEach {
+        systemProperty 'forge.logging.markers', 'REGISTRIES'
+        systemProperty 'forge.logging.console.level', 'debug'
+        workingDirectory project.layout.projectDirectory.dir('run').dir(name)
+        modSource project.sourceSets.main
+    }
+
+    client {
+        systemProperty 'neoforge.enabledGameTestNamespaces', project.mod_id
+    }
+
+    server {
+        systemProperty 'neoforge.enabledGameTestNamespaces', project.mod_id
+        argument '--nogui'
+    }
+
+    gameTestServer {
+        systemProperty 'neoforge.enabledGameTestNamespaces', project.mod_id
+    }
+}
+
+tasks.withType(ProcessResources).configureEach {
+    def replaceProperties = [
+        minecraft_version      : rootProject.minecraft_version,
+        minecraft_version_range: rootProject.minecraft_version_range,
+        neo_version            : rootProject.neo_version,
+        loader_version_range   : rootProject.loader_version_range,
+        mod_id                 : rootProject.mod_id,
+        mod_name               : rootProject.mod_name,
+        mod_license            : rootProject.mod_license,
+        mod_version            : rootProject.mod_version,
+        mod_authors            : rootProject.mod_authors,
+        mod_description        : rootProject.mod_description,
+        mod_homepage           : rootProject.mod_homepage,
+        mod_issues             : rootProject.mod_issues,
+    ]
+    inputs.properties replaceProperties
+
+    filesMatching(['META-INF/neoforge.mods.toml', 'pack.mcmeta']) {
+        expand replaceProperties
+    }
+}

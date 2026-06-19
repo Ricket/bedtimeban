@@ -1,0 +1,7 @@
+plugins {
+    id 'mc-common'
+}
+
+dependencies {
+    implementation project(':core')
+}

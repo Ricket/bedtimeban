@@ -1,0 +1,8 @@
+/build/
+/.gradle/
+/**/build/
+/buildSrc/.gradle/
+/neoforge/.gradle/
+/run/
+/run-*/
+/neoforge/run/

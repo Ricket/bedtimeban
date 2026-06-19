@@ -1,0 +1,41 @@
+pluginManagement {
+    repositories {
+        gradlePluginPortal()
+        maven { url = 'https://maven.neoforged.net/releases' }
+    }
+}
+
+plugins {
+    id 'org.gradle.toolchains.foojay-resolver-convention' version '1.0.0'
+}
+
+def loadVersionProperties() {
+    def versions = fileTree('versionProperties')
+        .matching { include '*.properties' }
+        .files
+        .collect { it.name.replace('.properties', '') }
+        .sort()
+
+    def selected = startParameter.projectProperties['mcVer'] ?: '1.21.1'
+    if (!versions.contains(selected)) {
+        throw new GradleException("Unknown mcVer '${selected}'. Available: ${versions}")
+    }
+
+    def props = new Properties()
+    file("versionProperties/${selected}.properties").withInputStream { props.load(it) }
+    props.each { key, value -> gradle.ext.set(key.toString(), value) }
+    gradle.ext.mcVer = selected
+    gradle.ext.availableMcVers = versions
+}
+
+loadVersionProperties()
+
+include 'core'
+include 'common'
+
+((String) gradle.ext.builds_for).split(',').collect { it.trim() }.findAll { !it.isEmpty() }.each {
+    include it
+}
+
+rootProject.name = 'bedtimeban'
+
