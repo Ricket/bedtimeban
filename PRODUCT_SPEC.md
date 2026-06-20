@@ -153,44 +153,63 @@ Who can run it:
 
 Accepted time formats:
 
-- 12-hour time only.
+- 12-hour and 24-hour time.
 - Case-insensitive.
 - Leading and trailing whitespace ignored.
-- No internal spaces.
+- Internal spaces are allowed before the am/pm marker.
+- `:` and `.` are both accepted as the hour/minute separator.
 - Accepted forms:
   - `11pm`
   - `9am`
   - `11:30pm`
   - `09:05am`
+  - `11:30 pm`
+  - `11:30 P.M.`
+  - `23:30`
+  - `23.30`
 
 Formally accepted patterns:
 
-- `h(am|pm)`
-- `hh(am|pm)`
-- `h:mm(am|pm)`
-- `hh:mm(am|pm)`
+- 12-hour:
+  - `h(am|pm)`
+  - `hh(am|pm)`
+  - `h:mm(am|pm)`
+  - `hh:mm(am|pm)`
+  - `h.mm(am|pm)`
+  - `hh.mm(am|pm)`
+  - with optional space before am/pm
+  - with optional periods in `a.m.` / `p.m.`
+- 24-hour:
+  - `H:mm`
+  - `HH:mm`
+  - `H.mm`
+  - `HH.mm`
 
 Preconditions:
 
 - The player must already have a stored timezone.
-- The player must not already have a scheduled bedtime/ban record.
 
 Success behavior:
 
 - The player’s local bedtime is converted to an absolute scheduled instant using the stored timezone.
-- A scheduled bedtime/ban record is created.
+- If the player does not already have a scheduled bedtime/ban record, a new one is created.
+- If the player already has a scheduled bedtime/ban record and the newly resolved absolute scheduled instant is earlier than the existing scheduled start while still in the future, the existing record is replaced.
 - The end time is set to exactly 8 hours after the start time.
 - The server sends:
   - `Ok, you will be banned at <yyyy-MM-dd hh:mma z>.`
+- If the player enters the exact same resolved instant they already have scheduled, the record is left unchanged and the server sends:
+  - `Your bedtime is already set to <yyyy-MM-dd hh:mma z>.`
 
 Failure behavior:
 
 - If the time string is invalid:
-  - `The time argument should be a 12-hr time with am or pm after it. Example: 11:30pm`
+  - `The time argument should be a valid bedtime like 11:30pm or 23:30.`
 - If the player has not configured a timezone:
   - `You have not configured your timezone yet. Use \`/bedtime timezone\` to set your timezone first.`
-- If the player already has a bedtime scheduled:
-  - `You already have a bedtime set.`
+- If the player already has a bedtime scheduled and the newly resolved instant is later than or equal to the current one:
+  - `You already have a bedtime set. You can only change it to an earlier future time.`
+- If the player already has a bedtime/ban record whose ban has already started:
+  - `You already have a bedtime set. You can only change it to an earlier future time.`
 
 ### `/bedtime cancel`
 
@@ -276,6 +295,12 @@ Important quirk to preserve:
 - Example: if it is 10:45 locally and the player sets `10:30pm`, the scheduled start may already be in the past and can therefore trigger almost immediately on the next enforcement pass.
 
 This quirk is part of the current product behavior and should be preserved if the goal is exact end-user equivalence.
+
+When `/bedtime set` is used to correct an existing future bedtime, the comparison is based on the resolved absolute scheduled instant, not just the clock face time. This allows corrections such as:
+
+- entering `11:30` and getting tomorrow at `11:30`
+- then correcting it to `11:30pm` or `23:30`
+- resulting in tonight at `23:30`, which is accepted because it is earlier than the currently stored scheduled instant and still in the future
 
 ## Warning Schedule
 
@@ -387,12 +412,14 @@ Ordinary players can:
 - check their stored timezone with `/bedtime timezone`
 - set or update timezone with `/bedtime timezone <tz>` when no bedtime is currently scheduled
 - schedule a bedtime with `/bedtime set <time>`
+- move an existing bedtime earlier with `/bedtime set <time>` when the newly resolved scheduled instant is earlier than the stored one and still in the future
 
 Ordinary players cannot:
 
 - cancel their own bedtime
 - cancel another player’s bedtime
-- modify a scheduled bedtime once it exists
+- move a scheduled bedtime later with `/bedtime set <time>`
+- edit a bedtime after its scheduled start has already been consumed by enforcement
 
 ### Admins / Operators
 
@@ -409,7 +436,7 @@ The following behaviors are part of the current product contract and should be p
 - Timezone is not auto-detected; the player must set it manually.
 - Timezone is remembered until changed.
 - Bedtime is one-time only and must be set again for each play session.
-- Once a bedtime is scheduled, the player cannot edit it.
+- Once a bedtime is scheduled, the player can only move it to an earlier future time.
 - Once a bedtime is scheduled, the player cannot change timezone.
 - Self-cancel is admin-only.
 - Warning thresholds are fixed at 15, 5, and 1 minute.
@@ -424,9 +451,8 @@ The current product does not implement any of the following:
 - recurring schedules by weekday or calendar rule
 - custom ban durations
 - player self-service cancellation without admin privileges
-- post-scheduling bedtime edits
-- grace-period correction after a mistaken time entry
-- localization beyond the current English command and message behavior
+- post-scheduling bedtime edits that move the bedtime later
+- automatic typo correction beyond ordinary `/bedtime set` re-entry
 - automatic client-side timezone detection
 - client-side UI beyond standard slash command interaction
 
@@ -456,7 +482,7 @@ The following scenarios should all behave as described:
 3. A player with no timezone runs `/bedtime set 11:30pm` and is told to configure timezone first.
 4. A player sets timezone successfully and later retrieves it successfully.
 5. A player with timezone set schedules a bedtime successfully and receives the confirmation with an absolute local timestamp.
-6. A player who already has a scheduled bedtime cannot schedule a second one.
+6. A player who already has a scheduled bedtime can move it earlier by running `/bedtime set <time>` again with an earlier future resolved instant.
 7. A player who already has a scheduled bedtime cannot change timezone.
 8. A scheduled player who logs in before bedtime receives a reminder of their bedtime.
 9. An online player receives warning messages at the 15-minute, 5-minute, and 1-minute thresholds.
@@ -468,3 +494,7 @@ The following scenarios should all behave as described:
 15. An admin can cancel another player’s bedtime using `/bedtime cancel <uuid>`.
 16. Cancellation of a nonexistent scheduled bedtime returns the appropriate no-schedule response.
 17. A bedtime entered earlier than the current minute but within the same local hour can trigger almost immediately instead of rolling to the next day.
+18. A player who tries to move an existing bedtime later is rejected.
+19. A player who re-enters the same resolved bedtime instant gets an informational no-op response.
+20. A player can use 24-hour notation and `.` separators such as `23:30` and `23.30`.
+21. A player can use spaced or punctuated am/pm forms such as `11:30 pm` and `11:30 P.M.`.

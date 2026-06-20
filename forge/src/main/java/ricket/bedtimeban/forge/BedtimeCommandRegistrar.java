@@ -14,7 +14,6 @@ import ricket.bedtimeban.core.service.BedtimeDomainService;
 
 import java.time.LocalTime;
 import java.time.ZoneId;
-import java.time.ZonedDateTime;
 import java.util.Optional;
 
 public final class BedtimeCommandRegistrar {
@@ -125,18 +124,31 @@ public final class BedtimeCommandRegistrar {
             }
 
             ScheduledBanRecord existing = repository.getScheduledBan(player.getUUID());
-            if (existing != null) {
+            BedtimeDomainService.ScheduleBedtimeResult result =
+                domainService.scheduleOrUpdateBan(player.getUUID(), timezone.zoneId(), bedtime.get(), existing);
+
+            if (result.status() == BedtimeDomainService.ScheduleBedtimeStatus.REJECTED) {
                 source.sendSystemMessage(Component.literal(messagingService.render(locale, "bedtimeban.command.set.already_set")));
                 return 1;
             }
 
-            ZonedDateTime scheduled = domainService.calculateScheduledDateTime(timezone.zoneId(), bedtime.get());
-            repository.putScheduledBan(domainService.scheduleBan(player.getUUID(), timezone.zoneId(), bedtime.get()));
+            if (result.status() == BedtimeDomainService.ScheduleBedtimeStatus.UNCHANGED) {
+                source.sendSystemMessage(Component.literal(
+                    messagingService.render(
+                        locale,
+                        "bedtimeban.command.set.same_time",
+                        messagingService.formatConfirmation(result.scheduled(), locale)
+                    )
+                ));
+                return 0;
+            }
+
+            repository.putScheduledBan(result.record());
             source.sendSystemMessage(Component.literal(
                 messagingService.render(
                     locale,
                     "bedtimeban.command.set.success",
-                    messagingService.formatConfirmation(scheduled, locale)
+                    messagingService.formatConfirmation(result.scheduled(), locale)
                 )
             ));
             return 0;

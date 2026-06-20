@@ -39,11 +39,38 @@ public final class BedtimeDomainService {
 
     public ScheduledBanRecord scheduleBan(UUID playerUuid, ZoneId zoneId, LocalTime bedtime) {
         ZonedDateTime scheduled = scheduleCalculator.calculate(bedtime, zoneId);
-        Instant start = scheduled.toInstant();
-        Instant end = start.plus(8, ChronoUnit.HOURS);
-        Duration initialLeadTime = Duration.between(Instant.now(clock), start);
-        int skippedWarnings = skippedWarningCount(initialLeadTime);
-        return new ScheduledBanRecord(playerUuid, start, end, "Bedtime", skippedWarnings);
+        return scheduleBan(playerUuid, scheduled);
+    }
+
+    public ScheduleBedtimeResult scheduleOrUpdateBan(UUID playerUuid, ZoneId zoneId, LocalTime bedtime, ScheduledBanRecord existing) {
+        ZonedDateTime scheduled = scheduleCalculator.calculate(bedtime, zoneId);
+        Instant scheduledInstant = scheduled.toInstant();
+        if (existing == null) {
+            return new ScheduleBedtimeResult(
+                ScheduleBedtimeStatus.CREATED,
+                scheduleBan(playerUuid, scheduled),
+                scheduled
+            );
+        }
+
+        if (existing.start() == null) {
+            return new ScheduleBedtimeResult(ScheduleBedtimeStatus.REJECTED, existing, null);
+        }
+
+        int comparison = scheduledInstant.compareTo(existing.start());
+        if (comparison == 0) {
+            return new ScheduleBedtimeResult(ScheduleBedtimeStatus.UNCHANGED, existing, scheduled);
+        }
+
+        if (comparison > 0 || !scheduledInstant.isAfter(Instant.now(clock))) {
+            return new ScheduleBedtimeResult(ScheduleBedtimeStatus.REJECTED, existing, null);
+        }
+
+        return new ScheduleBedtimeResult(
+            ScheduleBedtimeStatus.UPDATED_EARLIER,
+            scheduleBan(playerUuid, scheduled),
+            scheduled
+        );
     }
 
     public Optional<PendingWarning> nextWarningThreshold(ScheduledBanRecord record, Instant now) {
@@ -82,6 +109,14 @@ public final class BedtimeDomainService {
         return scheduleCalculator.calculate(bedtime, zoneId);
     }
 
+    private ScheduledBanRecord scheduleBan(UUID playerUuid, ZonedDateTime scheduled) {
+        Instant start = scheduled.toInstant();
+        Instant end = start.plus(8, ChronoUnit.HOURS);
+        Duration initialLeadTime = Duration.between(Instant.now(clock), start);
+        int skippedWarnings = skippedWarningCount(initialLeadTime);
+        return new ScheduledBanRecord(playerUuid, start, end, "Bedtime", skippedWarnings);
+    }
+
     private int skippedWarningCount(Duration leadTime) {
         BanWarningThreshold[] thresholds = BanWarningThreshold.values();
         int skipped = 0;
@@ -94,5 +129,15 @@ public final class BedtimeDomainService {
     }
 
     public record PendingWarning(BanWarningThreshold threshold, int warningsSentAfterProcessing) {
+    }
+
+    public record ScheduleBedtimeResult(ScheduleBedtimeStatus status, ScheduledBanRecord record, ZonedDateTime scheduled) {
+    }
+
+    public enum ScheduleBedtimeStatus {
+        CREATED,
+        UPDATED_EARLIER,
+        UNCHANGED,
+        REJECTED
     }
 }

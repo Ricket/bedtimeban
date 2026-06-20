@@ -6,6 +6,9 @@ REPO="Ricket/bedtimeban"
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 ROOT_DIR="$(cd "${SCRIPT_DIR}/.." && pwd)"
 TMP_DIR=""
+MODE=""
+REF=""
+TARGETS=()
 
 usage() {
   cat <<'EOF'
@@ -93,7 +96,7 @@ find_downloaded_pr_jar() {
   echo "${jar_path}"
 }
 
-download_pr_artifacts() {
+resolve_pr_run_id() {
   local pr_number="$1"
   local pr_json head_branch head_sha run_id
 
@@ -112,14 +115,45 @@ download_pr_artifacts() {
     --json databaseId,headSha,conclusion,status \
     --limit 20 \
     | jq -r --arg head_sha "${head_sha}" '
-        map(select(.headSha == $head_sha and .status == "completed" and .conclusion == "success"))
+        map(select(.headSha == $head_sha))
         | first
         | .databaseId // empty
       ')"
 
-  [[ -n "${run_id}" ]] || fail "No successful CI run found for PR #${pr_number} at ${head_sha}"
+  [[ -n "${run_id}" ]] || fail "No CI run found for PR #${pr_number} at ${head_sha}"
 
-  gh run download "${run_id}" --repo "${REPO}" --dir "${TMP_DIR}" >/dev/null
+  echo "${run_id}"
+}
+
+pr_artifact_available() {
+  local run_id="$1"
+  local target="$2"
+
+  gh api "repos/${REPO}/actions/runs/${run_id}/artifacts?per_page=100" \
+    | jq -e --arg artifact_name "$(ci_artifact_name "${target}")" '
+        any(.artifacts[]?; .name == $artifact_name and .expired == false)
+      ' >/dev/null
+}
+
+download_pr_artifact() {
+  local run_id="$1"
+  local target="$2"
+  local artifact_name
+  local artifact_dir
+
+  artifact_name="$(ci_artifact_name "${target}")"
+  artifact_dir="${TMP_DIR}/${artifact_name}"
+
+  if ! pr_artifact_available "${run_id}" "${target}"; then
+    echo "Skipping ${target}: CI artifact ${artifact_name} is not available yet for PR #${REF}"
+    return 1
+  fi
+
+  mkdir -p "${artifact_dir}"
+  gh run download "${run_id}" \
+    --repo "${REPO}" \
+    --dir "${artifact_dir}" \
+    --name "${artifact_name}" >/dev/null
 }
 
 download_release_assets() {
@@ -193,7 +227,7 @@ parse_args() {
 }
 
 main() {
-  local target jar_path
+  local target jar_path run_id installed_count=0
 
   require_command gh
   require_command jq
@@ -206,11 +240,16 @@ main() {
 
   case "${MODE}" in
     pr)
-      download_pr_artifacts "${REF}"
+      run_id="$(resolve_pr_run_id "${REF}")"
       for target in "${TARGETS[@]}"; do
+        if ! download_pr_artifact "${run_id}" "${target}"; then
+          continue
+        fi
         jar_path="$(find_downloaded_pr_jar "${target}")"
         install_jar "${target}" "${jar_path}"
+        installed_count=$((installed_count + 1))
       done
+      (( installed_count > 0 )) || fail "No requested PR artifacts were ready to install for PR #${REF}"
       ;;
     release)
       download_release_assets "${REF}" "${TARGETS[@]}"

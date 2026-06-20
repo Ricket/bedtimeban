@@ -113,6 +113,8 @@ Install only one target from a release:
 Notes:
 
 - Pull request installs use `gh` to download the CI workflow artifacts. GitHub expands those artifacts into directories, and the script installs the jar found inside each one.
+- Pull request installs now try each requested target independently. If one matrix artifact has not been uploaded yet, the script prints a skip message for that target and still installs any target that is already ready.
+- When no requested PR artifacts are ready yet, the script exits non-zero after printing the skip messages.
 - Release installs use `gh` to download the release jar assets directly.
 - Before installing, the script removes existing `bedtimeban*.jar` files from the target `data/mods` directory so only the newly installed jar remains.
 
@@ -125,7 +127,7 @@ Notes:
 - `/bedtime timezone <tz>`
   Saves the caller's timezone if they do not already have a scheduled bedtime.
 - `/bedtime set <time>`
-  Schedules a one-time bedtime using 12-hour input such as `11pm` or `11:30pm`.
+  Schedules a one-time bedtime using `11pm`, `11:30 pm`, `23:30`, or `23.30`. If a bedtime is already set, the player may only update it to an earlier future time.
 - `/bedtime cancel`
   Admin-only self-cancel.
 - `/bedtime cancel <playername-or-uuid>`
