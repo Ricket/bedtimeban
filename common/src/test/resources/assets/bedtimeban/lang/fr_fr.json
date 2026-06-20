@@ -11,7 +11,7 @@
   "bedtimeban.command.timezone.set.blocked": "Une interdiction est deja programmee. Impossible de changer le fuseau horaire.",
   "bedtimeban.command.timezone.set.invalid": "Fuseau horaire inconnu. Utilisez un identifiant standard comme \"US/Pacific\", \"America/Chicago\" ou \"EDT\".",
   "bedtimeban.command.timezone.set.success": "Votre fuseau horaire a ete mis a jour vers %s.",
-  "bedtimeban.command.set.invalid_time": "L'heure doit etre valide, par exemple 11:30pm, 11:30 pm, 23:30 ou 23.30.",
+  "bedtimeban.command.set.invalid_time": "L'heure doit etre valide, par exemple 11:30pm ou 23:30.",
   "bedtimeban.command.set.no_timezone": "Vous n'avez pas encore configure votre fuseau horaire. Utilisez `/bedtime timezone` d'abord.",
   "bedtimeban.command.set.already_set": "Vous avez deja defini une heure du coucher. Vous pouvez seulement la changer pour une heure future plus tot.",
   "bedtimeban.command.set.same_time": "Votre heure du coucher est deja definie a %s.",

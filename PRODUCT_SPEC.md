@@ -165,7 +165,6 @@ Accepted time formats:
   - `09:05am`
   - `11:30 pm`
   - `11:30 P.M.`
-  - `23`
   - `23:30`
   - `23.30`
 
@@ -181,8 +180,6 @@ Formally accepted patterns:
   - with optional space before am/pm
   - with optional periods in `a.m.` / `p.m.`
 - 24-hour:
-  - `H`
-  - `HH`
   - `H:mm`
   - `HH:mm`
   - `H.mm`
@@ -206,7 +203,7 @@ Success behavior:
 Failure behavior:
 
 - If the time string is invalid:
-  - `The time argument should be a valid bedtime like 11:30pm, 11:30 pm, 23:30, or 23.30.`
+  - `The time argument should be a valid bedtime like 11:30pm or 23:30.`
 - If the player has not configured a timezone:
   - `You have not configured your timezone yet. Use \`/bedtime timezone\` to set your timezone first.`
 - If the player already has a bedtime scheduled and the newly resolved instant is later than or equal to the current one:
