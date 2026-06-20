@@ -73,6 +73,49 @@ That tag builds both targets and publishes:
 
 Release builds inject the version with `-PreleaseVersion=...`, so development stays on `2.0.0-SNAPSHOT` while release jars and embedded mod metadata use the tagged version.
 
+## Install Into Local Test Servers
+
+The repository includes a helper for pulling built jars from GitHub and installing them into the local Docker test server directories:
+
+- `../server-1.20.1-forge/data/mods`
+- `../server-1.21.1-neoforge/data/mods`
+
+Prerequisite:
+
+```bash
+gh auth login
+```
+
+Install the latest successful CI artifacts for a pull request into both local test servers:
+
+```bash
+./scripts/install-bedtimeban.sh pr 3
+```
+
+Install only one target from a pull request:
+
+```bash
+./scripts/install-bedtimeban.sh pr 3 --target 1.21.1
+```
+
+Install a tagged GitHub Release into both local test servers:
+
+```bash
+./scripts/install-bedtimeban.sh release v2.0.0-rc1
+```
+
+Install only one target from a release:
+
+```bash
+./scripts/install-bedtimeban.sh release v2.0.0-rc1 --target 1.20.1
+```
+
+Notes:
+
+- Pull request installs use `gh` to download the CI workflow artifacts. GitHub expands those artifacts into directories, and the script installs the jar found inside each one.
+- Release installs use `gh` to download the release jar assets directly.
+- Before installing, the script removes existing `bedtimeban*.jar` files from the target `data/mods` directory so only the newly installed jar remains.
+
 ## Current Behavior
 
 - `/bedtime`
