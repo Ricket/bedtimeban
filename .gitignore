@@ -2,7 +2,9 @@
 /.gradle/
 /**/build/
 /buildSrc/.gradle/
+/forge/.gradle/
 /neoforge/.gradle/
 /run/
 /run-*/
+/forge/run/
 /neoforge/run/

@@ -1,0 +1,111 @@
+plugins {
+    id 'mc-common'
+    id 'eclipse'
+    id 'idea'
+    id 'maven-publish'
+    id 'net.minecraftforge.gradle' version '6.0.42'
+}
+
+base {
+    archivesName = rootProject.mod_id
+}
+
+minecraft {
+    mappings channel: rootProject.mapping_channel, version: rootProject.mapping_version
+    copyIdeResources = true
+
+    runs {
+        configureEach {
+            workingDirectory project.file('run')
+            property 'forge.logging.markers', 'REGISTRIES'
+            property 'forge.logging.console.level', 'debug'
+
+            mods {
+                "${rootProject.mod_id}" {
+                    source sourceSets.main
+                    source project(':core').sourceSets.main
+                    source project(':common').sourceSets.main
+                }
+            }
+        }
+
+        client {
+            property 'forge.enabledGameTestNamespaces', rootProject.mod_id
+        }
+
+        server {
+            property 'forge.enabledGameTestNamespaces', rootProject.mod_id
+            args '--nogui'
+        }
+
+        gameTestServer {
+            property 'forge.enabledGameTestNamespaces', rootProject.mod_id
+        }
+
+        data {
+            workingDirectory project.file('run-data')
+            args '--mod', rootProject.mod_id, '--all', '--output', file('src/generated/resources/'), '--existing', file('src/main/resources/')
+        }
+    }
+}
+
+sourceSets.main.resources { srcDir 'src/generated/resources' }
+
+dependencies {
+    implementation project(':core')
+    implementation project(':common')
+    minecraft "net.minecraftforge:forge:${rootProject.minecraft_version}-${rootProject.forge_version}"
+}
+
+tasks.named('processResources', ProcessResources).configure {
+    def replaceProperties = [
+        minecraft_version      : rootProject.minecraft_version,
+        minecraft_version_range: rootProject.minecraft_version_range,
+        forge_version          : rootProject.forge_version,
+        forge_version_range    : rootProject.forge_version_range,
+        loader_version_range   : rootProject.loader_version_range,
+        mod_id                 : rootProject.mod_id,
+        mod_name               : rootProject.mod_name,
+        mod_license            : rootProject.mod_license,
+        mod_version            : rootProject.mod_version,
+        mod_authors            : rootProject.mod_authors,
+        mod_description        : rootProject.mod_description,
+        mod_homepage           : rootProject.mod_homepage,
+        mod_issues             : rootProject.mod_issues,
+    ]
+    inputs.properties replaceProperties
+
+    filesMatching(['META-INF/mods.toml', 'pack.mcmeta']) {
+        expand replaceProperties + [project: project]
+    }
+}
+
+tasks.named('jar', Jar).configure {
+    from(project(':core').sourceSets.main.output)
+    from(project(':common').sourceSets.main.output)
+    manifest {
+        attributes([
+            'Specification-Title'     : rootProject.mod_id,
+            'Specification-Vendor'    : rootProject.mod_authors,
+            'Specification-Version'   : '1',
+            'Implementation-Title'    : project.name,
+            'Implementation-Version'  : project.jar.archiveVersion,
+            'Implementation-Vendor'   : rootProject.mod_authors,
+            'Implementation-Timestamp': new Date().format("yyyy-MM-dd'T'HH:mm:ssZ")
+        ])
+    }
+    finalizedBy 'reobfJar'
+}
+
+publishing {
+    publications {
+        register('mavenJava', MavenPublication) {
+            artifact jar
+        }
+    }
+    repositories {
+        maven {
+            url "file://${project.projectDir}/mcmodsrepo"
+        }
+    }
+}

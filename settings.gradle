@@ -1,6 +1,7 @@
 pluginManagement {
     repositories {
         gradlePluginPortal()
+        maven { url = 'https://maven.minecraftforge.net/' }
         maven { url = 'https://maven.neoforged.net/releases' }
     }
 }
@@ -38,4 +39,3 @@ include 'common'
 }
 
 rootProject.name = 'bedtimeban'
-
