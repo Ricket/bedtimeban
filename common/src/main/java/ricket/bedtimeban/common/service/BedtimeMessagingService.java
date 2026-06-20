@@ -87,8 +87,12 @@ public final class BedtimeMessagingService {
         return zoneId.getDisplayName(TextStyle.FULL, locale) + " (" + zoneId.getId() + ")";
     }
 
-    public String formatConfirmation(ZonedDateTime bedtime, String localeCode) {
-        return domainService.formatConfirmation(bedtime, translator.toJavaLocale(localeCode));
+    public String renderSetSuccess(ZonedDateTime bedtime, String localeCode) {
+        return renderSetMessage(bedtime, localeCode, "bedtimeban.command.set.success");
+    }
+
+    public String renderSetSameTime(ZonedDateTime bedtime, String localeCode) {
+        return renderSetMessage(bedtime, localeCode, "bedtimeban.command.set.same_time");
     }
 
     public BedtimeTranslator translator() {
@@ -101,5 +105,15 @@ public final class BedtimeMessagingService {
             case FIVE_MINUTES -> "bedtimeban.warning.five_minutes";
             case ONE_MINUTE -> "bedtimeban.warning.one_minute";
         };
+    }
+
+    private String renderSetMessage(ZonedDateTime bedtime, String localeCode, String baseKey) {
+        Locale locale = translator.toJavaLocale(localeCode);
+        String formattedTime = domainService.formatConfirmationTime(bedtime, locale);
+        String key = switch (domainService.confirmationRelativeDay(bedtime)) {
+            case TODAY -> baseKey + ".today";
+            case TOMORROW -> baseKey + ".tomorrow";
+        };
+        return render(localeCode, key, formattedTime);
     }
 }

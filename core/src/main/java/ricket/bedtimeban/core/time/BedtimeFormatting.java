@@ -18,8 +18,8 @@ public final class BedtimeFormatting {
         return zonedDateTime.format(formatter) + " " + zoneId.getDisplayName(TextStyle.SHORT, locale);
     }
 
-    public static String formatConfirmation(ZonedDateTime bedtime, Locale locale) {
-        DateTimeFormatter formatter = DateTimeFormatter.ofLocalizedDateTime(FormatStyle.MEDIUM, FormatStyle.SHORT).localizedBy(locale);
+    public static String formatConfirmationTime(ZonedDateTime bedtime, Locale locale) {
+        DateTimeFormatter formatter = DateTimeFormatter.ofLocalizedTime(FormatStyle.SHORT).localizedBy(locale);
         return bedtime.format(formatter) + " " + bedtime.getZone().getDisplayName(TextStyle.SHORT, locale);
     }
 }
