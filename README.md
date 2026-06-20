@@ -2,14 +2,12 @@
 
 Bedtime Ban is a server-side Minecraft mod that lets each player set a one-time bedtime in their own timezone. Before the deadline, the server sends reminder messages. When the deadline arrives, the player is temporarily banned for 8 hours.
 
-This branch is a fresh multiversion workspace. The currently supported targets are:
+Note this mod **only works on a server**; it is not for single player. And you only need to install it to the server, clients do not need to install it.
 
-- Minecraft `1.21.1`
-- Loader `NeoForge`
-- Java `21`
-- Minecraft `1.20.1`
-- Loader `Forge`
-- Java `17`
+The currently supported targets are:
+
+- Minecraft `1.21.1`, Loader `NeoForge`, Java `21`
+- Minecraft `1.20.1`, Loader `Forge`, Java `17`
 
 ## Workspace Layout
 
@@ -43,16 +41,9 @@ Run a development server:
 ./gradlew -PmcVer=1.20.1 :forge:runServer
 ```
 
-Run a development client:
-
-```bash
-./gradlew -PmcVer=1.21.1 :neoforge:runClient
-./gradlew -PmcVer=1.20.1 :forge:runClient
-```
-
 ## CI And Releases
 
-GitHub Actions validates both supported targets on every pull request to `master` and every push to `master`.
+GitHub Actions validates all supported targets on every pull request to `master` and every push to `master`.
 
 - `1.20.1` Forge builds on Java `17`
 - `1.21.1` NeoForge builds on Java `21`
@@ -139,8 +130,7 @@ State is persisted in a JSON file under the server's `serverconfig` directory as
 
 - This mod is intended to be server-side only.
 - The current implementation follows the behavior described in [`PRODUCT_SPEC.md`](./PRODUCT_SPEC.md).
-- The `1.20.1` Forge target uses the same JSON persistence model and product behavior as the new workspace, not the old config-list persistence from the legacy `mc1.20` branch.
-- The scheduling quirk from the older versions is intentionally preserved: a bedtime earlier than the current minute but within the same local hour can resolve into the immediate past and trigger on the next enforcement pass.
+
 # Localization
 
 Server-side localization files live in `common/src/main/resources/assets/bedtimeban/lang/`.
