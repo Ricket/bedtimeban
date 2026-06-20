@@ -125,7 +125,7 @@ Notes:
 - `/bedtime timezone <tz>`
   Saves the caller's timezone if they do not already have a scheduled bedtime.
 - `/bedtime set <time>`
-  Schedules a one-time bedtime using 12-hour input such as `11pm` or `11:30pm`.
+  Schedules a one-time bedtime using `11pm`, `11:30 pm`, `23:30`, or `23.30`. If a bedtime is already set, the player may only update it to an earlier future time.
 - `/bedtime cancel`
   Admin-only self-cancel.
 - `/bedtime cancel <playername-or-uuid>`
