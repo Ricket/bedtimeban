@@ -2,6 +2,7 @@ package ricket.bedtimeban.common.service;
 
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.io.TempDir;
+import ricket.bedtimeban.core.model.PlayerLocaleRecord;
 import ricket.bedtimeban.common.persistence.BedtimeStateStore;
 import ricket.bedtimeban.core.model.PlayerTimezoneRecord;
 import ricket.bedtimeban.core.model.ScheduledBanRecord;
@@ -27,12 +28,13 @@ class BedtimeRepositoryTest {
 
         UUID userId = UUID.randomUUID();
         repository.putTimezone(new PlayerTimezoneRecord(userId, ZoneId.of("UTC")));
+        repository.putLocale(new PlayerLocaleRecord(userId, "en_us"));
         repository.putScheduledBan(new ScheduledBanRecord(userId, Instant.parse("2026-06-19T22:30:00Z"), Instant.parse("2026-06-20T06:30:00Z"), "Bedtime", 0));
 
         assertEquals("UTC", repository.getTimezone(userId).zoneId().getId());
+        assertEquals("en_us", repository.getLocale(userId).locale());
         assertTrue(repository.hasScheduledBan(userId));
         assertTrue(repository.removeScheduledBan(userId));
         assertFalse(repository.hasScheduledBan(userId));
     }
 }
-

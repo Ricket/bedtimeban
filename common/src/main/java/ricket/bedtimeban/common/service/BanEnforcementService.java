@@ -18,12 +18,14 @@ public final class BanEnforcementService {
 
     private final BedtimeRepository repository;
     private final BedtimeDomainService domainService;
+    private final BedtimeMessagingService messagingService;
     private final Clock clock;
     private Instant lastRun;
 
-    public BanEnforcementService(BedtimeRepository repository, BedtimeDomainService domainService, Clock clock) {
+    public BanEnforcementService(BedtimeRepository repository, BedtimeDomainService domainService, BedtimeMessagingService messagingService, Clock clock) {
         this.repository = repository;
         this.domainService = domainService;
+        this.messagingService = messagingService;
         this.clock = clock;
     }
 
@@ -53,7 +55,14 @@ public final class BanEnforcementService {
         }
 
         if (record.start() != null && now.isAfter(record.start())) {
-            if (serverAccess.ban(record.playerUuid(), record.start(), record.end())) {
+            String currentLocale = serverAccess.getPlayerLocale(record.playerUuid()).orElse(null);
+            if (serverAccess.ban(
+                record.playerUuid(),
+                record.start(),
+                record.end(),
+                messagingService.banReason(record.playerUuid(), currentLocale),
+                messagingService.disconnectMessage(record.playerUuid(), currentLocale)
+            )) {
                 repository.putScheduledBan(record.withStart(null));
             }
             return;
@@ -69,7 +78,8 @@ public final class BanEnforcementService {
         Instant warningInstant = record.start().minus(warning.toDuration());
         if (now.isAfter(warningInstant)) {
             if (serverAccess.isPlayerOnline(record.playerUuid())) {
-                serverAccess.sendSystemMessage(record.playerUuid(), warning.toUserString() + " until bedtime!");
+                String currentLocale = serverAccess.getPlayerLocale(record.playerUuid()).orElse(null);
+                serverAccess.sendSystemMessage(record.playerUuid(), messagingService.warningMessage(record.playerUuid(), currentLocale, warning));
             }
             repository.putScheduledBan(record.withWarningsSent(pendingWarning.warningsSentAfterProcessing()));
         }

@@ -18,7 +18,7 @@ public final class ForgeServerEvents {
 
     public ForgeServerEvents(BedtimeBanCommon common) {
         this.common = common;
-        this.commandRegistrar = new BedtimeCommandRegistrar(common.repository(), common.domainService());
+        this.commandRegistrar = new BedtimeCommandRegistrar(common.repository(), common.domainService(), common.messagingService());
     }
 
     @SubscribeEvent

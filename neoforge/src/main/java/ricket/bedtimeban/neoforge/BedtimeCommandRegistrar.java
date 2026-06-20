@@ -6,6 +6,7 @@ import net.minecraft.commands.CommandSourceStack;
 import net.minecraft.commands.Commands;
 import net.minecraft.network.chat.Component;
 import net.minecraft.server.level.ServerPlayer;
+import ricket.bedtimeban.common.service.BedtimeMessagingService;
 import ricket.bedtimeban.common.service.BedtimeRepository;
 import ricket.bedtimeban.core.model.PlayerTimezoneRecord;
 import ricket.bedtimeban.core.model.ScheduledBanRecord;
@@ -19,10 +20,12 @@ import java.util.Optional;
 public final class BedtimeCommandRegistrar {
     private final BedtimeRepository repository;
     private final BedtimeDomainService domainService;
+    private final BedtimeMessagingService messagingService;
 
-    public BedtimeCommandRegistrar(BedtimeRepository repository, BedtimeDomainService domainService) {
+    public BedtimeCommandRegistrar(BedtimeRepository repository, BedtimeDomainService domainService, BedtimeMessagingService messagingService) {
         this.repository = repository;
         this.domainService = domainService;
+        this.messagingService = messagingService;
     }
 
     public void register(CommandDispatcher<CommandSourceStack> dispatcher) {
@@ -45,8 +48,9 @@ public final class BedtimeCommandRegistrar {
     private int executeRoot(CommandSourceStack source) {
         try {
             ServerPlayer player = source.getPlayerOrException();
-            Optional<String> reminder = domainService.makeReminderString(repository.getScheduledBan(player.getUUID()), repository.getTimezone(player.getUUID()));
-            source.sendSystemMessage(Component.literal(reminder.orElse("You haven't set a bedtime yet.")));
+            String locale = player.getLanguage();
+            Optional<String> reminder = messagingService.makeReminderMessage(player.getUUID(), locale);
+            source.sendSystemMessage(Component.literal(reminder.orElseGet(() -> messagingService.render(locale, "bedtimeban.command.root.none"))));
             return 0;
         } catch (Exception e) {
             throw new IllegalStateException("Failed to execute /bedtime", e);
@@ -56,11 +60,18 @@ public final class BedtimeCommandRegistrar {
     private int executeTimezoneGet(CommandSourceStack source) {
         try {
             ServerPlayer player = source.getPlayerOrException();
+            String locale = player.getLanguage();
             PlayerTimezoneRecord timezone = repository.getTimezone(player.getUUID());
             if (timezone == null) {
-                source.sendSystemMessage(Component.literal("You haven't set a timezone yet."));
+                source.sendSystemMessage(Component.literal(messagingService.render(locale, "bedtimeban.command.timezone.get.none")));
             } else {
-                source.sendSystemMessage(Component.literal("Your timezone is: " + domainService.formatTimezoneDisplay(timezone.zoneId())));
+                source.sendSystemMessage(Component.literal(
+                    messagingService.render(
+                        locale,
+                        "bedtimeban.command.timezone.get.success",
+                        messagingService.formatTimezoneDisplay(timezone.zoneId(), locale)
+                    )
+                ));
             }
             return 0;
         } catch (Exception e) {
@@ -71,19 +82,26 @@ public final class BedtimeCommandRegistrar {
     private int executeTimezoneSet(CommandSourceStack source, String userInputTimezone) {
         try {
             ServerPlayer player = source.getPlayerOrException();
+            String locale = player.getLanguage();
             if (repository.hasScheduledBan(player.getUUID())) {
-                source.sendSystemMessage(Component.literal("You already have a ban scheduled! Cannot change timezone."));
+                source.sendSystemMessage(Component.literal(messagingService.render(locale, "bedtimeban.command.timezone.set.blocked")));
                 return 1;
             }
 
             Optional<ZoneId> timezone = domainService.parseZoneId(userInputTimezone);
             if (timezone.isEmpty()) {
-                source.sendSystemMessage(Component.literal("No such timezone. Use a standard timezone ID like \"US/Pacific\" or \"America/Chicago\" or \"EDT\"."));
+                source.sendSystemMessage(Component.literal(messagingService.render(locale, "bedtimeban.command.timezone.set.invalid")));
                 return 1;
             }
 
             repository.putTimezone(new PlayerTimezoneRecord(player.getUUID(), timezone.get()));
-            source.sendSystemMessage(Component.literal("Updated your timezone to " + domainService.formatTimezoneDisplay(timezone.get()) + "."));
+            source.sendSystemMessage(Component.literal(
+                messagingService.render(
+                    locale,
+                    "bedtimeban.command.timezone.set.success",
+                    messagingService.formatTimezoneDisplay(timezone.get(), locale)
+                )
+            ));
             return 0;
         } catch (Exception e) {
             throw new IllegalStateException("Failed to execute /bedtime timezone <tz>", e);
@@ -93,27 +111,34 @@ public final class BedtimeCommandRegistrar {
     private int executeSet(CommandSourceStack source, String userInputTime) {
         try {
             ServerPlayer player = source.getPlayerOrException();
+            String locale = player.getLanguage();
             Optional<LocalTime> bedtime = domainService.parseBedtime(userInputTime);
             if (bedtime.isEmpty()) {
-                source.sendSystemMessage(Component.literal("The time argument should be a 12-hr time with am or pm after it. Example: 11:30pm"));
+                source.sendSystemMessage(Component.literal(messagingService.render(locale, "bedtimeban.command.set.invalid_time")));
                 return 1;
             }
 
             PlayerTimezoneRecord timezone = repository.getTimezone(player.getUUID());
             if (timezone == null) {
-                source.sendSystemMessage(Component.literal("You have not configured your timezone yet. Use `/bedtime timezone` to set your timezone first."));
+                source.sendSystemMessage(Component.literal(messagingService.render(locale, "bedtimeban.command.set.no_timezone")));
                 return 1;
             }
 
             ScheduledBanRecord existing = repository.getScheduledBan(player.getUUID());
             if (existing != null) {
-                source.sendSystemMessage(Component.literal("You already have a bedtime set."));
+                source.sendSystemMessage(Component.literal(messagingService.render(locale, "bedtimeban.command.set.already_set")));
                 return 1;
             }
 
             ZonedDateTime scheduled = domainService.calculateScheduledDateTime(timezone.zoneId(), bedtime.get());
             repository.putScheduledBan(domainService.scheduleBan(player.getUUID(), timezone.zoneId(), bedtime.get()));
-            source.sendSystemMessage(Component.literal("Ok, you will be banned at " + domainService.formatConfirmation(scheduled) + "."));
+            source.sendSystemMessage(Component.literal(
+                messagingService.render(
+                    locale,
+                    "bedtimeban.command.set.success",
+                    messagingService.formatConfirmation(scheduled, locale)
+                )
+            ));
             return 0;
         } catch (Exception e) {
             throw new IllegalStateException("Failed to execute /bedtime set <time>", e);
@@ -123,12 +148,13 @@ public final class BedtimeCommandRegistrar {
     private int executeSelfCancel(CommandSourceStack source) {
         try {
             ServerPlayer player = source.getPlayerOrException();
+            String locale = player.getLanguage();
             ServerBanAccess access = new ServerBanAccess(source.getServer());
             access.unban(player.getUUID());
             if (repository.removeScheduledBan(player.getUUID())) {
-                source.sendSystemMessage(Component.literal("Your bedtime ban has been cancelled."));
+                source.sendSystemMessage(Component.literal(messagingService.render(locale, "bedtimeban.command.cancel.self.success")));
             } else {
-                source.sendSystemMessage(Component.literal("You do not have a bedtime scheduled."));
+                source.sendSystemMessage(Component.literal(messagingService.render(locale, "bedtimeban.command.cancel.self.none")));
             }
             return 0;
         } catch (Exception e) {
@@ -138,22 +164,27 @@ public final class BedtimeCommandRegistrar {
 
     private int executeTargetCancel(CommandSourceStack source, String userInputTarget) {
         try {
+            String locale = sourceLocale(source);
             ServerBanAccess access = new ServerBanAccess(source.getServer());
             Optional<java.util.UUID> uuid = access.resolvePlayerUuid(userInputTarget);
             if (uuid.isEmpty()) {
-                source.sendSystemMessage(Component.literal("Could not get UUID for username " + userInputTarget));
+                source.sendSystemMessage(Component.literal(messagingService.render(locale, "bedtimeban.command.cancel.target.missing_uuid", userInputTarget)));
                 return 1;
             }
 
             access.unban(uuid.get());
             if (repository.removeScheduledBan(uuid.get())) {
-                source.sendSystemMessage(Component.literal("Ban has been cancelled for ").append(userInputTarget));
+                source.sendSystemMessage(Component.literal(messagingService.render(locale, "bedtimeban.command.cancel.target.success", userInputTarget)));
             } else {
-                source.sendSystemMessage(Component.literal("There was not a scheduled ban for ").append(userInputTarget));
+                source.sendSystemMessage(Component.literal(messagingService.render(locale, "bedtimeban.command.cancel.target.none", userInputTarget)));
             }
             return 0;
         } catch (Exception e) {
             throw new IllegalStateException("Failed to execute /bedtime cancel <player>", e);
         }
+    }
+
+    private String sourceLocale(CommandSourceStack source) {
+        return source.getEntity() instanceof ServerPlayer player ? player.getLanguage() : null;
     }
 }

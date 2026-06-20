@@ -1,0 +1,23 @@
+{
+  "bedtimeban.ban.reason": "Bedtime",
+  "bedtimeban.disconnect.good_night": "Good night!",
+  "bedtimeban.warning.fifteen_minutes": "15 minutes until bedtime!",
+  "bedtimeban.warning.five_minutes": "5 minutes until bedtime!",
+  "bedtimeban.warning.one_minute": "1 minute until bedtime!",
+  "bedtimeban.command.root.none": "You haven't set a bedtime yet.",
+  "bedtimeban.command.root.reminder": "Reminder that your bedtime is: %s",
+  "bedtimeban.command.timezone.get.none": "You haven't set a timezone yet.",
+  "bedtimeban.command.timezone.get.success": "Your timezone is: %s",
+  "bedtimeban.command.timezone.set.blocked": "You already have a ban scheduled! Cannot change timezone.",
+  "bedtimeban.command.timezone.set.invalid": "No such timezone. Use a standard timezone ID like \"US/Pacific\", \"America/Chicago\", or \"EDT\".",
+  "bedtimeban.command.timezone.set.success": "Updated your timezone to %s.",
+  "bedtimeban.command.set.invalid_time": "The time argument should be a 12-hour time with am or pm after it. Example: 11:30pm",
+  "bedtimeban.command.set.no_timezone": "You have not configured your timezone yet. Use `/bedtime timezone` to set your timezone first.",
+  "bedtimeban.command.set.already_set": "You already have a bedtime set.",
+  "bedtimeban.command.set.success": "Ok, you will be banned at %s.",
+  "bedtimeban.command.cancel.self.success": "Your bedtime ban has been cancelled.",
+  "bedtimeban.command.cancel.self.none": "You do not have a bedtime scheduled.",
+  "bedtimeban.command.cancel.target.missing_uuid": "Could not get UUID for username %s",
+  "bedtimeban.command.cancel.target.success": "Ban has been cancelled for %s",
+  "bedtimeban.command.cancel.target.none": "There was not a scheduled ban for %s"
+}

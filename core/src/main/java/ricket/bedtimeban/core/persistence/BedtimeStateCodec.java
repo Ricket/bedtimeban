@@ -6,6 +6,7 @@ import com.google.gson.JsonArray;
 import com.google.gson.JsonElement;
 import com.google.gson.JsonObject;
 import com.google.gson.JsonParser;
+import ricket.bedtimeban.core.model.PlayerLocaleRecord;
 import ricket.bedtimeban.core.model.PlayerTimezoneRecord;
 import ricket.bedtimeban.core.model.ScheduledBanRecord;
 
@@ -26,12 +27,18 @@ public final class BedtimeStateCodec {
             .sorted(Comparator.comparing(PlayerTimezoneRecord::playerUuid))
             .map(this::toJson)
             .forEach(timezones::add);
+        JsonArray locales = new JsonArray();
+        state.locales().values().stream()
+            .sorted(Comparator.comparing(PlayerLocaleRecord::playerUuid))
+            .map(this::toJson)
+            .forEach(locales::add);
         JsonArray scheduledBans = new JsonArray();
         state.scheduledBans().values().stream()
             .sorted(Comparator.comparing(ScheduledBanRecord::playerUuid))
             .map(this::toJson)
             .forEach(scheduledBans::add);
         root.add("timezones", timezones);
+        root.add("locales", locales);
         root.add("scheduledBans", scheduledBans);
         return gson.toJson(root);
     }
@@ -49,10 +56,13 @@ public final class BedtimeStateCodec {
         Map<UUID, PlayerTimezoneRecord> timezones = new HashMap<>();
         forEachTimezone(root.getAsJsonArray("timezones"), record -> timezones.put(record.playerUuid(), record));
 
+        Map<UUID, PlayerLocaleRecord> locales = new HashMap<>();
+        forEachLocale(root.getAsJsonArray("locales"), record -> locales.put(record.playerUuid(), record));
+
         Map<UUID, ScheduledBanRecord> scheduledBans = new HashMap<>();
         forEachScheduledBan(root.getAsJsonArray("scheduledBans"), record -> scheduledBans.put(record.playerUuid(), record));
 
-        return new BedtimeState(timezones, scheduledBans);
+        return new BedtimeState(timezones, locales, scheduledBans);
     }
 
     private JsonObject toJson(PlayerTimezoneRecord record) {
@@ -76,6 +86,13 @@ public final class BedtimeStateCodec {
         return object;
     }
 
+    private JsonObject toJson(PlayerLocaleRecord record) {
+        JsonObject object = new JsonObject();
+        object.addProperty("playerUuid", record.playerUuid().toString());
+        object.addProperty("locale", record.locale());
+        return object;
+    }
+
     private void forEachTimezone(JsonArray array, ThrowingConsumer<PlayerTimezoneRecord> consumer) {
         if (array == null) {
             return;
@@ -86,6 +103,23 @@ public final class BedtimeStateCodec {
                 consumer.accept(new PlayerTimezoneRecord(
                     UUID.fromString(object.get("playerUuid").getAsString()),
                     ZoneId.of(object.get("zoneId").getAsString())
+                ));
+            } catch (RuntimeException ex) {
+                // Ignore invalid persisted entries.
+            }
+        }
+    }
+
+    private void forEachLocale(JsonArray array, ThrowingConsumer<PlayerLocaleRecord> consumer) {
+        if (array == null) {
+            return;
+        }
+        for (JsonElement element : array) {
+            try {
+                JsonObject object = element.getAsJsonObject();
+                consumer.accept(new PlayerLocaleRecord(
+                    UUID.fromString(object.get("playerUuid").getAsString()),
+                    object.get("locale").getAsString()
                 ));
             } catch (RuntimeException ex) {
                 // Ignore invalid persisted entries.
