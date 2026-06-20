@@ -71,29 +71,44 @@ class BanEnforcementServiceTest {
     void onlineWarningSendsMessageAndIncrementsCounter() throws Exception {
         UUID userId = UUID.randomUUID();
         BedtimeRepository repository = repository();
-        repository.putScheduledBan(new ScheduledBanRecord(userId, Instant.parse("2026-06-19T22:45:00Z"), Instant.parse("2026-06-20T06:45:00Z"), "Bedtime", 0));
+        repository.putScheduledBan(new ScheduledBanRecord(userId, Instant.parse("2026-06-19T22:40:00Z"), Instant.parse("2026-06-20T06:40:00Z"), "Bedtime", 1));
         FakeAccess access = new FakeAccess();
         access.onlineUsers.add(userId);
-        BanEnforcementService service = new BanEnforcementService(repository, new BedtimeDomainService(Clock.systemUTC()), Clock.fixed(Instant.parse("2026-06-19T22:31:00Z"), ZoneOffset.UTC));
+        BanEnforcementService service = new BanEnforcementService(repository, new BedtimeDomainService(Clock.systemUTC()), Clock.fixed(Instant.parse("2026-06-19T22:36:00Z"), ZoneOffset.UTC));
 
         service.tick(access, message -> {});
 
-        assertEquals(List.of("15 minutes until bedtime!"), access.messages);
-        assertEquals(1, repository.getScheduledBan(userId).warningsSent());
+        assertEquals(List.of("5 minutes until bedtime!"), access.messages);
+        assertEquals(2, repository.getScheduledBan(userId).warningsSent());
     }
 
     @Test
     void offlineWarningStillIncrementsCounter() throws Exception {
         UUID userId = UUID.randomUUID();
         BedtimeRepository repository = repository();
-        repository.putScheduledBan(new ScheduledBanRecord(userId, Instant.parse("2026-06-19T22:45:00Z"), Instant.parse("2026-06-20T06:45:00Z"), "Bedtime", 0));
+        repository.putScheduledBan(new ScheduledBanRecord(userId, Instant.parse("2026-06-19T22:40:00Z"), Instant.parse("2026-06-20T06:40:00Z"), "Bedtime", 1));
         FakeAccess access = new FakeAccess();
-        BanEnforcementService service = new BanEnforcementService(repository, new BedtimeDomainService(Clock.systemUTC()), Clock.fixed(Instant.parse("2026-06-19T22:31:00Z"), ZoneOffset.UTC));
+        BanEnforcementService service = new BanEnforcementService(repository, new BedtimeDomainService(Clock.systemUTC()), Clock.fixed(Instant.parse("2026-06-19T22:36:00Z"), ZoneOffset.UTC));
 
         service.tick(access, message -> {});
 
         assertTrue(access.messages.isEmpty());
-        assertEquals(1, repository.getScheduledBan(userId).warningsSent());
+        assertEquals(2, repository.getScheduledBan(userId).warningsSent());
+    }
+
+    @Test
+    void shortLeadTimeOnlySendsOneMinuteWarning() throws Exception {
+        UUID userId = UUID.randomUUID();
+        BedtimeRepository repository = repository();
+        repository.putScheduledBan(new ScheduledBanRecord(userId, Instant.parse("2026-06-19T22:30:00Z"), Instant.parse("2026-06-20T06:30:00Z"), "Bedtime", 2));
+        FakeAccess access = new FakeAccess();
+        access.onlineUsers.add(userId);
+        BanEnforcementService service = new BanEnforcementService(repository, new BedtimeDomainService(Clock.systemUTC()), Clock.fixed(Instant.parse("2026-06-19T22:29:30Z"), ZoneOffset.UTC));
+
+        service.tick(access, message -> {});
+
+        assertEquals(List.of("1 minute until bedtime!"), access.messages);
+        assertEquals(3, repository.getScheduledBan(userId).warningsSent());
     }
 
     private BedtimeRepository repository() throws Exception {

@@ -279,7 +279,7 @@ This quirk is part of the current product behavior and should be preserved if th
 
 ## Warning Schedule
 
-Before the bedtime ban starts, the product sends up to three warning messages in this fixed order:
+Before the bedtime ban starts, the product can send up to three warning messages, using these thresholds:
 
 1. 15 minutes before bedtime
 2. 5 minutes before bedtime
@@ -294,7 +294,11 @@ User-visible warning text:
 Warning behavior details:
 
 - Warnings are tracked by the `warningsSent` counter on the scheduled record.
-- Warnings are consumed in order and only once each.
+- `warningsSent` counts how many leading thresholds have already been consumed or permanently skipped.
+- Thresholds larger than the original lead time when the bedtime is scheduled are skipped immediately and must never be sent later.
+- On each enforcement pass, the system sends at most one warning.
+- When multiple unsent thresholds are already in the past, the system skips the older/larger ones and sends the nearest currently applicable threshold instead.
+- A warning is consumed only once.
 - If the player is offline when a warning threshold passes, no message is delivered, but the warning still counts as consumed.
 - Missed warnings are not replayed when the player logs in later.
 
@@ -311,7 +315,7 @@ If `start` exists and the current instant has not yet reached `start`, the enfor
 If so:
 
 - If the player is online, the corresponding warning message is sent.
-- The `warningsSent` counter is incremented and persisted.
+- The `warningsSent` counter is advanced and persisted to reflect the warning that was just consumed and any larger thresholds that were skipped.
 
 ### Ban Start Phase
 
@@ -464,4 +468,3 @@ The following scenarios should all behave as described:
 15. An admin can cancel another player’s bedtime using `/bedtime cancel <uuid>`.
 16. Cancellation of a nonexistent scheduled bedtime returns the appropriate no-schedule response.
 17. A bedtime entered earlier than the current minute but within the same local hour can trigger almost immediately instead of rolling to the next day.
-

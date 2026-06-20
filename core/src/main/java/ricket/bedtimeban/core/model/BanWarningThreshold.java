@@ -1,5 +1,6 @@
 package ricket.bedtimeban.core.model;
 
+import java.time.Duration;
 import java.time.temporal.ChronoUnit;
 
 public enum BanWarningThreshold {
@@ -15,8 +16,8 @@ public enum BanWarningThreshold {
         this.unit = unit;
     }
 
-    public InstantDelta toDelta() {
-        return new InstantDelta(amount, unit);
+    public Duration toDuration() {
+        return Duration.of(amount, unit);
     }
 
     public String toUserString() {
@@ -26,8 +27,4 @@ public enum BanWarningThreshold {
         }
         return amount + " " + unitString;
     }
-
-    public record InstantDelta(int amount, ChronoUnit unit) {
-    }
 }
-
