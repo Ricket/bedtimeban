@@ -9,6 +9,7 @@ import ricket.bedtimeban.core.time.BedtimeTimeParser;
 import java.time.Clock;
 import java.time.Duration;
 import java.time.Instant;
+import java.time.LocalDate;
 import java.time.LocalTime;
 import java.time.ZoneId;
 import java.time.ZonedDateTime;
@@ -101,8 +102,13 @@ public final class BedtimeDomainService {
         return BedtimeFormatting.formatReminder(start, zoneId, locale);
     }
 
-    public String formatConfirmation(ZonedDateTime bedtime, java.util.Locale locale) {
-        return BedtimeFormatting.formatConfirmation(bedtime, locale);
+    public String formatConfirmationTime(ZonedDateTime bedtime, java.util.Locale locale) {
+        return BedtimeFormatting.formatConfirmationTime(bedtime, locale);
+    }
+
+    public BedtimeRelativeDay confirmationRelativeDay(ZonedDateTime bedtime) {
+        LocalDate today = Instant.now(clock).atZone(bedtime.getZone()).toLocalDate();
+        return bedtime.toLocalDate().isEqual(today) ? BedtimeRelativeDay.TODAY : BedtimeRelativeDay.TOMORROW;
     }
 
     public ZonedDateTime calculateScheduledDateTime(ZoneId zoneId, LocalTime bedtime) {
@@ -139,5 +145,10 @@ public final class BedtimeDomainService {
         UPDATED_EARLIER,
         UNCHANGED,
         REJECTED
+    }
+
+    public enum BedtimeRelativeDay {
+        TODAY,
+        TOMORROW
     }
 }

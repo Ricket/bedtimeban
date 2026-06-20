@@ -196,9 +196,11 @@ Success behavior:
 - If the player already has a scheduled bedtime/ban record and the newly resolved absolute scheduled instant is earlier than the existing scheduled start while still in the future, the existing record is replaced.
 - The end time is set to exactly 8 hours after the start time.
 - The server sends:
-  - `Ok, you will be banned at <yyyy-MM-dd hh:mma z>.`
+  - `Ok, you will be banned at <hh:mma z>.` when the ban is later that local day.
+  - `Ok, you will be banned tomorrow at <hh:mma z>.` when the ban is on the next local day.
 - If the player enters the exact same resolved instant they already have scheduled, the record is left unchanged and the server sends:
-  - `Your bedtime is already set to <yyyy-MM-dd hh:mma z>.`
+  - `Your bedtime is already set to <hh:mma z>.` when the ban is later that local day.
+  - `Your bedtime is already set to tomorrow at <hh:mma z>.` when the ban is on the next local day.
 
 Failure behavior:
 
@@ -481,7 +483,7 @@ The following scenarios should all behave as described:
 2. A player with no timezone runs `/bedtime timezone` and is told no timezone is set.
 3. A player with no timezone runs `/bedtime set 11:30pm` and is told to configure timezone first.
 4. A player sets timezone successfully and later retrieves it successfully.
-5. A player with timezone set schedules a bedtime successfully and receives the confirmation with an absolute local timestamp.
+5. A player with timezone set schedules a bedtime successfully and receives the confirmation with a localized local time and timezone, using a separate tomorrow-specific message when applicable.
 6. A player who already has a scheduled bedtime can move it earlier by running `/bedtime set <time>` again with an earlier future resolved instant.
 7. A player who already has a scheduled bedtime cannot change timezone.
 8. A scheduled player who logs in before bedtime receives a reminder of their bedtime.

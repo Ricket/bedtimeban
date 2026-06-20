@@ -133,24 +133,12 @@ public final class BedtimeCommandRegistrar {
             }
 
             if (result.status() == BedtimeDomainService.ScheduleBedtimeStatus.UNCHANGED) {
-                source.sendSystemMessage(Component.literal(
-                    messagingService.render(
-                        locale,
-                        "bedtimeban.command.set.same_time",
-                        messagingService.formatConfirmation(result.scheduled(), locale)
-                    )
-                ));
+                source.sendSystemMessage(Component.literal(messagingService.renderSetSameTime(result.scheduled(), locale)));
                 return 0;
             }
 
             repository.putScheduledBan(result.record());
-            source.sendSystemMessage(Component.literal(
-                messagingService.render(
-                    locale,
-                    "bedtimeban.command.set.success",
-                    messagingService.formatConfirmation(result.scheduled(), locale)
-                )
-            ));
+            source.sendSystemMessage(Component.literal(messagingService.renderSetSuccess(result.scheduled(), locale)));
             return 0;
         } catch (Exception e) {
             throw new IllegalStateException("Failed to execute /bedtime set <time>", e);
