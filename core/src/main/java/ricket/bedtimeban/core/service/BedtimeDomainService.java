@@ -8,6 +8,7 @@ import ricket.bedtimeban.core.time.BedtimeScheduleCalculator;
 import ricket.bedtimeban.core.time.BedtimeTimeParser;
 
 import java.time.Clock;
+import java.time.Duration;
 import java.time.Instant;
 import java.time.LocalTime;
 import java.time.ZoneId;
@@ -19,9 +20,11 @@ import java.util.Optional;
 import java.util.UUID;
 
 public final class BedtimeDomainService {
+    private final Clock clock;
     private final BedtimeScheduleCalculator scheduleCalculator;
 
     public BedtimeDomainService(Clock clock) {
+        this.clock = clock;
         this.scheduleCalculator = new BedtimeScheduleCalculator(clock);
     }
 
@@ -41,7 +44,9 @@ public final class BedtimeDomainService {
         ZonedDateTime scheduled = scheduleCalculator.calculate(bedtime, zoneId);
         Instant start = scheduled.toInstant();
         Instant end = start.plus(8, ChronoUnit.HOURS);
-        return new ScheduledBanRecord(playerUuid, start, end, "Bedtime", 0);
+        Duration initialLeadTime = Duration.between(Instant.now(clock), start);
+        int skippedWarnings = skippedWarningCount(initialLeadTime);
+        return new ScheduledBanRecord(playerUuid, start, end, "Bedtime", skippedWarnings);
     }
 
     public Optional<String> makeReminderString(ScheduledBanRecord record, PlayerTimezoneRecord timezoneRecord) {
@@ -51,7 +56,7 @@ public final class BedtimeDomainService {
         return Optional.of("Reminder that your bedtime is: " + BedtimeFormatting.formatReminder(record.start(), timezoneRecord.zoneId()));
     }
 
-    public Optional<BanWarningThreshold> nextWarningThreshold(ScheduledBanRecord record) {
+    public Optional<PendingWarning> nextWarningThreshold(ScheduledBanRecord record, Instant now) {
         if (record == null || record.start() == null) {
             return Optional.empty();
         }
@@ -59,7 +64,20 @@ public final class BedtimeDomainService {
         if (record.warningsSent() < 0 || record.warningsSent() >= thresholds.length) {
             return Optional.empty();
         }
-        return Optional.of(thresholds[record.warningsSent()]);
+
+        Duration remaining = Duration.between(now, record.start());
+        int selectedIndex = -1;
+        for (int index = record.warningsSent(); index < thresholds.length; index++) {
+            if (remaining.compareTo(thresholds[index].toDuration()) <= 0) {
+                selectedIndex = index;
+            }
+        }
+
+        if (selectedIndex < 0) {
+            return Optional.empty();
+        }
+
+        return Optional.of(new PendingWarning(thresholds[selectedIndex], selectedIndex + 1));
     }
 
     public String formatTimezoneDisplay(ZoneId zoneId) {
@@ -73,5 +91,18 @@ public final class BedtimeDomainService {
     public ZonedDateTime calculateScheduledDateTime(ZoneId zoneId, LocalTime bedtime) {
         return scheduleCalculator.calculate(bedtime, zoneId);
     }
-}
 
+    private int skippedWarningCount(Duration leadTime) {
+        BanWarningThreshold[] thresholds = BanWarningThreshold.values();
+        int skipped = 0;
+        for (BanWarningThreshold threshold : thresholds) {
+            if (leadTime.compareTo(threshold.toDuration()) < 0) {
+                skipped++;
+            }
+        }
+        return skipped;
+    }
+
+    public record PendingWarning(BanWarningThreshold threshold, int warningsSentAfterProcessing) {
+    }
+}
