@@ -1,0 +1,58 @@
+name: CI
+
+on:
+  pull_request:
+    branches:
+      - master
+  push:
+    branches:
+      - master
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ci-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  build-and-test:
+    name: ${{ matrix.mcVer }} ${{ matrix.module }}
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - mcVer: 1.20.1
+            module: forge
+            java: '17'
+            artifact_label: mc1.20.1-forge
+          - mcVer: 1.21.1
+            module: neoforge
+            java: '21'
+            artifact_label: mc1.21.1-neoforge
+
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v4
+
+      - name: Set up Java ${{ matrix.java }}
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: ${{ matrix.java }}
+          cache: gradle
+
+      - name: Build and test
+        run: ./gradlew -PmcVer=${{ matrix.mcVer }} test build
+
+      - name: Upload loader jar
+        uses: actions/upload-artifact@v4
+        with:
+          name: bedtimeban-ci-${{ matrix.artifact_label }}
+          path: |
+            ${{ matrix.module }}/build/libs/bedtimeban-*.jar
+            !${{ matrix.module }}/build/libs/*-sources.jar
+          if-no-files-found: error
+          retention-days: 14

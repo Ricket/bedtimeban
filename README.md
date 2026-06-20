@@ -50,6 +50,29 @@ Run a development client:
 ./gradlew -PmcVer=1.20.1 :forge:runClient
 ```
 
+## CI And Releases
+
+GitHub Actions validates both supported targets on every pull request to `master` and every push to `master`.
+
+- `1.20.1` Forge builds on Java `17`
+- `1.21.1` NeoForge builds on Java `21`
+
+Each CI run uploads temporary workflow artifacts containing the built loader jar for each target. These are useful for validation, but they are not the permanent public download location.
+
+Tagged releases publish permanent GitHub Release assets. To cut a release:
+
+```bash
+git tag v2.0.0
+git push origin v2.0.0
+```
+
+That tag builds both targets and publishes:
+
+- `bedtimeban-v2.0.0-mc1.20.1-forge.jar`
+- `bedtimeban-v2.0.0-mc1.21.1-neoforge.jar`
+
+Release builds inject the version with `-PreleaseVersion=...`, so development stays on `2.0.0-SNAPSHOT` while release jars and embedded mod metadata use the tagged version.
+
 ## Current Behavior
 
 - `/bedtime`
