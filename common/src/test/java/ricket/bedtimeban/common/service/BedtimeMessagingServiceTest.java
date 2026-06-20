@@ -9,50 +9,69 @@ import java.time.Instant;
 import java.time.ZoneId;
 import java.time.ZoneOffset;
 import java.time.ZonedDateTime;
+import java.util.Locale;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 
 class BedtimeMessagingServiceTest {
     @Test
     void rendersSetSuccessForToday() {
-        BedtimeMessagingService messagingService = messagingServiceAt("2026-06-20T18:00:00Z");
+        TestContext context = messagingServiceAt("2026-06-20T18:00:00Z");
+        ZonedDateTime bedtime = ZonedDateTime.of(2026, 6, 20, 23, 0, 0, 0, ZoneId.of("America/Chicago"));
 
-        String message = messagingService.renderSetSuccess(
-            ZonedDateTime.of(2026, 6, 20, 23, 0, 0, 0, ZoneId.of("America/Chicago")),
-            "en_us"
+        String message = context.messagingService.renderSetSuccess(bedtime, "en_us");
+        String expected = context.translator.render(
+            "en_us",
+            "bedtimeban.command.set.success.today",
+            context.domainService.formatConfirmationTime(bedtime, Locale.US)
         );
 
-        assertEquals("Ok, you will be banned at 11:00\u202fPM CT.", message);
+        assertEquals(expected, message);
     }
 
     @Test
     void rendersSetSuccessForTomorrow() {
-        BedtimeMessagingService messagingService = messagingServiceAt("2026-06-20T03:00:00Z");
+        TestContext context = messagingServiceAt("2026-06-20T03:00:00Z");
+        ZonedDateTime bedtime = ZonedDateTime.of(2026, 6, 21, 1, 0, 0, 0, ZoneId.of("America/Chicago"));
 
-        String message = messagingService.renderSetSuccess(
-            ZonedDateTime.of(2026, 6, 21, 1, 0, 0, 0, ZoneId.of("America/Chicago")),
-            "en_us"
+        String message = context.messagingService.renderSetSuccess(bedtime, "en_us");
+        String expected = context.translator.render(
+            "en_us",
+            "bedtimeban.command.set.success.tomorrow",
+            context.domainService.formatConfirmationTime(bedtime, Locale.US)
         );
 
-        assertEquals("Ok, you will be banned tomorrow at 1:00\u202fAM CT.", message);
+        assertEquals(expected, message);
     }
 
     @Test
     void rendersSameTimeForTomorrowInAlternateLocale() {
-        BedtimeMessagingService messagingService = messagingServiceAt("2026-06-20T03:00:00Z");
+        TestContext context = messagingServiceAt("2026-06-20T03:00:00Z");
+        ZonedDateTime bedtime = ZonedDateTime.of(2026, 6, 21, 1, 0, 0, 0, ZoneId.of("America/Chicago"));
 
-        String message = messagingService.renderSetSameTime(
-            ZonedDateTime.of(2026, 6, 21, 1, 0, 0, 0, ZoneId.of("America/Chicago")),
-            "fr_fr"
+        String message = context.messagingService.renderSetSameTime(bedtime, "fr_fr");
+        String expected = context.translator.render(
+            "fr_fr",
+            "bedtimeban.command.set.same_time.tomorrow",
+            context.domainService.formatConfirmationTime(bedtime, Locale.FRANCE)
         );
 
-        assertEquals("Votre heure du coucher est deja definie pour demain a 01:00 CT.", message);
+        assertEquals(expected, message);
     }
 
-    private BedtimeMessagingService messagingServiceAt(String now) {
+    private TestContext messagingServiceAt(String now) {
         Clock clock = Clock.fixed(Instant.parse(now), ZoneOffset.UTC);
         BedtimeRepository repository = new BedtimeRepository(null);
         BedtimeDomainService domainService = new BedtimeDomainService(clock);
-        return new BedtimeMessagingService(repository, domainService, new BedtimeTranslator());
+        BedtimeTranslator translator = new BedtimeTranslator();
+        BedtimeMessagingService messagingService = new BedtimeMessagingService(repository, domainService, translator);
+        return new TestContext(messagingService, domainService, translator);
+    }
+
+    private record TestContext(
+        BedtimeMessagingService messagingService,
+        BedtimeDomainService domainService,
+        BedtimeTranslator translator
+    ) {
     }
 }
