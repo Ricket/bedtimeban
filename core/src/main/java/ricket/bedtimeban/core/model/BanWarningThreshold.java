@@ -16,10 +16,6 @@ public enum BanWarningThreshold {
         this.unit = unit;
     }
 
-    public InstantDelta toDelta() {
-        return new InstantDelta(amount, unit);
-    }
-
     public Duration toDuration() {
         return Duration.of(amount, unit);
     }
@@ -30,8 +26,5 @@ public enum BanWarningThreshold {
             unitString = unitString.substring(0, unitString.length() - 1);
         }
         return amount + " " + unitString;
-    }
-
-    public record InstantDelta(int amount, ChronoUnit unit) {
     }
 }

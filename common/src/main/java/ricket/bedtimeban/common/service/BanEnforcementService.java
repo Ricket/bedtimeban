@@ -66,8 +66,7 @@ public final class BanEnforcementService {
 
         BedtimeDomainService.PendingWarning pendingWarning = nextWarning.get();
         BanWarningThreshold warning = pendingWarning.threshold();
-        BanWarningThreshold.InstantDelta delta = warning.toDelta();
-        Instant warningInstant = record.start().minus(delta.amount(), delta.unit());
+        Instant warningInstant = record.start().minus(warning.toDuration());
         if (now.isAfter(warningInstant)) {
             if (serverAccess.isPlayerOnline(record.playerUuid())) {
                 serverAccess.sendSystemMessage(record.playerUuid(), warning.toUserString() + " until bedtime!");
