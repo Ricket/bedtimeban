@@ -1,7 +1,6 @@
 package ricket.bedtimeban.core.service;
 
 import ricket.bedtimeban.core.model.BanWarningThreshold;
-import ricket.bedtimeban.core.model.PlayerTimezoneRecord;
 import ricket.bedtimeban.core.model.ScheduledBanRecord;
 import ricket.bedtimeban.core.time.BedtimeFormatting;
 import ricket.bedtimeban.core.time.BedtimeScheduleCalculator;
@@ -13,9 +12,7 @@ import java.time.Instant;
 import java.time.LocalTime;
 import java.time.ZoneId;
 import java.time.ZonedDateTime;
-import java.time.format.TextStyle;
 import java.time.temporal.ChronoUnit;
-import java.util.Locale;
 import java.util.Optional;
 import java.util.UUID;
 
@@ -49,13 +46,6 @@ public final class BedtimeDomainService {
         return new ScheduledBanRecord(playerUuid, start, end, "Bedtime", skippedWarnings);
     }
 
-    public Optional<String> makeReminderString(ScheduledBanRecord record, PlayerTimezoneRecord timezoneRecord) {
-        if (record == null || record.start() == null || timezoneRecord == null) {
-            return Optional.empty();
-        }
-        return Optional.of("Reminder that your bedtime is: " + BedtimeFormatting.formatReminder(record.start(), timezoneRecord.zoneId()));
-    }
-
     public Optional<PendingWarning> nextWarningThreshold(ScheduledBanRecord record, Instant now) {
         if (record == null || record.start() == null) {
             return Optional.empty();
@@ -80,12 +70,12 @@ public final class BedtimeDomainService {
         return Optional.of(new PendingWarning(thresholds[selectedIndex], selectedIndex + 1));
     }
 
-    public String formatTimezoneDisplay(ZoneId zoneId) {
-        return zoneId.getDisplayName(TextStyle.FULL, Locale.getDefault()) + " (" + zoneId.getId() + ")";
+    public String formatReminder(Instant start, ZoneId zoneId, java.util.Locale locale) {
+        return BedtimeFormatting.formatReminder(start, zoneId, locale);
     }
 
-    public String formatConfirmation(ZonedDateTime bedtime) {
-        return BedtimeFormatting.formatConfirmation(bedtime);
+    public String formatConfirmation(ZonedDateTime bedtime, java.util.Locale locale) {
+        return BedtimeFormatting.formatConfirmation(bedtime, locale);
     }
 
     public ZonedDateTime calculateScheduledDateTime(ZoneId zoneId, LocalTime bedtime) {

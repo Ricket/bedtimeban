@@ -1,0 +1,23 @@
+{
+  "bedtimeban.ban.reason": "Heure du coucher",
+  "bedtimeban.disconnect.good_night": "Bonne nuit !",
+  "bedtimeban.warning.fifteen_minutes": "Plus que 15 minutes avant l'heure du coucher !",
+  "bedtimeban.warning.five_minutes": "Plus que 5 minutes avant l'heure du coucher !",
+  "bedtimeban.warning.one_minute": "Plus qu'une minute avant l'heure du coucher !",
+  "bedtimeban.command.root.none": "Vous n'avez pas encore defini d'heure du coucher.",
+  "bedtimeban.command.root.reminder": "Rappel : votre heure du coucher est a %s",
+  "bedtimeban.command.timezone.get.none": "Vous n'avez pas encore defini de fuseau horaire.",
+  "bedtimeban.command.timezone.get.success": "Votre fuseau horaire est : %s",
+  "bedtimeban.command.timezone.set.blocked": "Une interdiction est deja programmee. Impossible de changer le fuseau horaire.",
+  "bedtimeban.command.timezone.set.invalid": "Fuseau horaire inconnu. Utilisez un identifiant standard comme \"US/Pacific\", \"America/Chicago\" ou \"EDT\".",
+  "bedtimeban.command.timezone.set.success": "Votre fuseau horaire a ete mis a jour vers %s.",
+  "bedtimeban.command.set.invalid_time": "L'heure doit etre au format 12 heures avec am ou pm. Exemple : 11:30pm",
+  "bedtimeban.command.set.no_timezone": "Vous n'avez pas encore configure votre fuseau horaire. Utilisez `/bedtime timezone` d'abord.",
+  "bedtimeban.command.set.already_set": "Vous avez deja defini une heure du coucher.",
+  "bedtimeban.command.set.success": "D'accord, vous serez banni a %s.",
+  "bedtimeban.command.cancel.self.success": "Votre bannissement d'heure du coucher a ete annule.",
+  "bedtimeban.command.cancel.self.none": "Vous n'avez pas d'heure du coucher programmee.",
+  "bedtimeban.command.cancel.target.missing_uuid": "Impossible de trouver l'UUID pour le nom d'utilisateur %s",
+  "bedtimeban.command.cancel.target.success": "Le bannissement a ete annule pour %s",
+  "bedtimeban.command.cancel.target.none": "Aucun bannissement programme pour %s"
+}

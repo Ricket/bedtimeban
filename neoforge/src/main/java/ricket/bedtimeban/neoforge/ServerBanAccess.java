@@ -23,7 +23,7 @@ public final class ServerBanAccess implements BedtimeServerAccess {
     }
 
     @Override
-    public boolean ban(UUID playerUuid, Instant start, Instant end) {
+    public boolean ban(UUID playerUuid, Instant start, Instant end, String reason, String disconnectMessage) {
         GameProfile gameProfile = getGameProfile(playerUuid);
         PlayerList playerList = server.getPlayerList();
         UserBanList bans = playerList.getBans();
@@ -31,12 +31,12 @@ public final class ServerBanAccess implements BedtimeServerAccess {
             return false;
         }
 
-        UserBanListEntry entry = new UserBanListEntry(gameProfile, Date.from(start), "BedtimeBan", Date.from(end), "Bed time!");
+        UserBanListEntry entry = new UserBanListEntry(gameProfile, Date.from(start), "BedtimeBan", Date.from(end), reason);
         bans.add(entry);
 
         ServerPlayer player = playerList.getPlayer(playerUuid);
         if (player != null) {
-            player.connection.disconnect(Component.literal("Good night!"));
+            player.connection.disconnect(Component.literal(disconnectMessage));
         }
         return true;
     }
@@ -84,9 +84,14 @@ public final class ServerBanAccess implements BedtimeServerAccess {
         return Objects.requireNonNull(server.getProfileCache()).get(usernameOrUuid).map(GameProfile::getId);
     }
 
+    @Override
+    public Optional<String> getPlayerLocale(UUID playerUuid) {
+        ServerPlayer player = server.getPlayerList().getPlayer(playerUuid);
+        return player == null ? Optional.empty() : Optional.of(player.getLanguage());
+    }
+
     private GameProfile getGameProfile(UUID playerUuid) {
         return Objects.requireNonNull(server.getProfileCache()).get(playerUuid)
             .orElseThrow(() -> new IllegalStateException("Could not find GameProfile for player " + playerUuid));
     }
 }
-

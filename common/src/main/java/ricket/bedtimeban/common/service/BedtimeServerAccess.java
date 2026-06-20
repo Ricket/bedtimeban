@@ -5,7 +5,7 @@ import java.util.Optional;
 import java.util.UUID;
 
 public interface BedtimeServerAccess {
-    boolean ban(UUID playerUuid, Instant start, Instant end);
+    boolean ban(UUID playerUuid, Instant start, Instant end, String reason, String disconnectMessage);
 
     void unban(UUID playerUuid);
 
@@ -16,5 +16,6 @@ public interface BedtimeServerAccess {
     String uuidToDisplayName(UUID playerUuid);
 
     Optional<UUID> resolvePlayerUuid(String usernameOrUuid);
-}
 
+    Optional<String> getPlayerLocale(UUID playerUuid);
+}

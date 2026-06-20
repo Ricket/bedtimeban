@@ -1,6 +1,7 @@
 package ricket.bedtimeban.common.service;
 
 import ricket.bedtimeban.common.persistence.BedtimeStateStore;
+import ricket.bedtimeban.core.model.PlayerLocaleRecord;
 import ricket.bedtimeban.core.model.PlayerTimezoneRecord;
 import ricket.bedtimeban.core.model.ScheduledBanRecord;
 import ricket.bedtimeban.core.persistence.BedtimeState;
@@ -14,6 +15,7 @@ import java.util.concurrent.ConcurrentHashMap;
 public final class BedtimeRepository {
     private final BedtimeStateStore store;
     private final Map<UUID, PlayerTimezoneRecord> timezones = new ConcurrentHashMap<>();
+    private final Map<UUID, PlayerLocaleRecord> locales = new ConcurrentHashMap<>();
     private final Map<UUID, ScheduledBanRecord> scheduledBans = new ConcurrentHashMap<>();
 
     public BedtimeRepository(BedtimeStateStore store) {
@@ -25,6 +27,8 @@ public final class BedtimeRepository {
         BedtimeState state = store.load();
         timezones.clear();
         timezones.putAll(state.timezones());
+        locales.clear();
+        locales.putAll(state.locales());
         scheduledBans.clear();
         scheduledBans.putAll(state.scheduledBans());
     }
@@ -35,6 +39,15 @@ public final class BedtimeRepository {
 
     public synchronized void putTimezone(PlayerTimezoneRecord timezoneRecord) throws IOException {
         timezones.put(timezoneRecord.playerUuid(), timezoneRecord);
+        save();
+    }
+
+    public PlayerLocaleRecord getLocale(UUID playerUuid) {
+        return locales.get(playerUuid);
+    }
+
+    public synchronized void putLocale(PlayerLocaleRecord localeRecord) throws IOException {
+        locales.put(localeRecord.playerUuid(), localeRecord);
         save();
     }
 
@@ -65,11 +78,10 @@ public final class BedtimeRepository {
     }
 
     public synchronized BedtimeState snapshot() {
-        return new BedtimeState(timezones, scheduledBans);
+        return new BedtimeState(timezones, locales, scheduledBans);
     }
 
     private void save() throws IOException {
         store.save(snapshot());
     }
 }
-

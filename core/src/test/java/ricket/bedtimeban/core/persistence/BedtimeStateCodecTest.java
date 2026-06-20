@@ -1,6 +1,7 @@
 package ricket.bedtimeban.core.persistence;
 
 import org.junit.jupiter.api.Test;
+import ricket.bedtimeban.core.model.PlayerLocaleRecord;
 import ricket.bedtimeban.core.model.PlayerTimezoneRecord;
 import ricket.bedtimeban.core.model.ScheduledBanRecord;
 
@@ -19,6 +20,7 @@ class BedtimeStateCodecTest {
         BedtimeStateCodec codec = new BedtimeStateCodec();
         BedtimeState state = new BedtimeState(
             Map.of(userId, new PlayerTimezoneRecord(userId, ZoneId.of("America/Chicago"))),
+            Map.of(userId, new PlayerLocaleRecord(userId, "en_us")),
             Map.of(userId, new ScheduledBanRecord(userId, Instant.parse("2026-06-19T22:30:00Z"), Instant.parse("2026-06-20T06:30:00Z"), "Bedtime", 1))
         );
 
@@ -50,4 +52,3 @@ class BedtimeStateCodecTest {
         assertTrue(decoded.timezones().containsKey(UUID.fromString("11111111-1111-1111-1111-111111111111")));
     }
 }
-

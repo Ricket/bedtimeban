@@ -139,3 +139,8 @@ State is persisted in a JSON file under the server's `serverconfig` directory as
 - The current implementation follows the behavior described in [`PRODUCT_SPEC.md`](./PRODUCT_SPEC.md).
 - The `1.20.1` Forge target uses the same JSON persistence model and product behavior as the new workspace, not the old config-list persistence from the legacy `mc1.20` branch.
 - The scheduling quirk from the older versions is intentionally preserved: a bedtime earlier than the current minute but within the same local hour can resolve into the immediate past and trigger on the next enforcement pass.
+# Localization
+
+Server-side localization files live in `common/src/main/resources/assets/bedtimeban/lang/`.
+Add a new locale by copying `en_us.json` to `<locale>.json` and translating the values.
+The server renders strings from these files using each player's reported Minecraft locale, with `en_us` as the fallback.
